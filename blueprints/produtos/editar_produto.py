@@ -1,0 +1,218 @@
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from conexao import get_db_connection
+from decimal import Decimal
+
+editar_produto_bp = Blueprint('editar_produto_bp', __name__)
+
+def obter_parametros(categoriaID):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT pis, cofins, irpj, csll, icms, icms_fe, frete, producao,
+               outros_custos, lucro_desejado, juros_diario
+        FROM parametros
+        WHERE categoriaID = %s
+    """, (categoriaID,))
+    parametros = cursor.fetchone() or {}
+    cursor.close()
+    conn.close()
+    return parametros
+
+def calcular_precificacao(custo, frete, producao, lucro, outros, pis, cofins, irpj, csll, icms):
+    custo = Decimal(custo or 0)
+    frete = Decimal(frete or 0)
+    producao = Decimal(producao or 0)
+    outros = Decimal(outros or 0)
+    lucro = Decimal(lucro or 0)
+    pis = Decimal(pis or 0)
+    cofins = Decimal(cofins or 0)
+    irpj = Decimal(irpj or 0)
+    csll = Decimal(csll or 0)
+    icms = Decimal(icms or 0)
+
+    soma_percentuais = lucro + outros + pis + cofins + irpj + csll + icms
+    base = 1 - soma_percentuais
+    preco_venda = (custo + frete + producao) / base if base != 0 else Decimal(0)
+    outros_r = preco_venda * outros
+    custo_total = custo + frete + producao + outros_r
+    impostos = preco_venda * (pis + cofins + irpj + csll + icms)
+    lucro_liquido = preco_venda - custo_total - impostos
+    lucro_pct = (lucro_liquido / preco_venda) * 100 if preco_venda else Decimal(0)
+    return preco_venda, lucro_liquido, impostos, lucro_pct, custo_total, outros_r
+
+@editar_produto_bp.route('/editar_produto/<int:produtoID>', methods=['GET', 'POST'])
+def editar_produto(produtoID):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT * FROM produtos WHERE produtoID = %s", (produtoID,))
+    produto = cursor.fetchone()
+    if not produto:
+        return "Produto não encontrado", 404
+
+    cursor.execute("SELECT * FROM tipo")
+    tipos = cursor.fetchall()
+    cursor.execute("SELECT * FROM categoria")
+    categorias = cursor.fetchall()
+    cursor.execute("SELECT * FROM unidades")
+    unidades = cursor.fetchall()
+
+    parametros = obter_parametros(produto['produto_categoriaID'])
+    frete_ton = Decimal(parametros.get('frete', 0))
+    producao_ton = Decimal(parametros.get('producao', 0))
+    outros_pct = Decimal(parametros.get('outros_custos', 0))
+    lucro_pct = Decimal(parametros.get('lucro_desejado', 0))
+    pis = Decimal(parametros.get('pis', 0))
+    cofins = Decimal(parametros.get('cofins', 0))
+    irpj = Decimal(parametros.get('irpj', 0))
+    csll = Decimal(parametros.get('csll', 0))
+    icms = Decimal(parametros.get('icms', 0))
+    icms_fe = Decimal(parametros.get('icms_fe', 0))
+    juros_diario = float(parametros.get('juros_diario', 0.001))
+
+    peso = Decimal(produto.get('produto_peso') or 0)
+    custo = Decimal(produto.get('produto_custo') or 0)
+    frete = (frete_ton / 1000) * peso
+    producao = (producao_ton / 1000) * peso
+
+    def prec(tipo, usa_frete, usa_icms):
+        return calcular_precificacao(
+            custo, frete if usa_frete else 0, producao, lucro_pct, outros_pct,
+            pis, cofins, irpj, csll, icms if usa_icms else icms_fe
+        )
+
+    precs = {
+        'de': prec('de', False, True),
+        'de_fr': prec('de_fr', True, True),
+        'fe': prec('fe', False, False),
+        'fe_fr': prec('fe_fr', True, False),
+    }
+
+    if request.method == 'POST':
+        form = request.form
+        update_query = """
+            UPDATE produtos SET 
+                produto_nome=%s, produto_tipoID=%s, produto_categoriaID=%s,
+                produto_descricao=%s, produto_peso=%s, produto_validade=%s,
+                produto_unidadeID=%s, produto_custo=%s, produto_fornecedor=%s,
+                produto_venda_de=%s, produto_venda_de_fr=%s,
+                produto_venda_fe=%s, produto_venda_fe_fr=%s
+            WHERE produtoID = %s
+        """
+        cursor.execute(update_query, (
+            form['produto_nome'].upper(),
+            form['produto_tipoID'],
+            form['produto_categoriaID'],
+            form['produto_descricao'].upper() if form.get('produto_descricao') else '',
+            Decimal(form.get('produto_peso') or 0),
+            int(form.get('produto_validade') or 0),
+            form['produto_unidadeID'],
+            Decimal(form.get('produto_custo') or 0),
+            form['produto_fornecedor'].upper() if form.get('produto_fornecedor') else '',
+            Decimal(form.get('preco_venda_de') or 0),
+            Decimal(form.get('preco_venda_de_fr') or 0),
+            Decimal(form.get('preco_venda_fe') or 0),
+            Decimal(form.get('preco_venda_fe_fr') or 0),
+            produtoID
+        ))
+        conn.commit()
+        flash("Produto atualizado com sucesso!", "success")
+        return redirect(url_for('editar_produto_bp.editar_produto', produtoID=produtoID))
+
+    def calc_pagamentos(base):
+        return {
+            'avista': float(base),
+            '28': float(base + base * Decimal(juros_diario * 28)),
+            '56': float(base + base * Decimal(juros_diario * 56)),
+            '28_56': float(base + base * Decimal(juros_diario * 42)),
+            '84': float(base + base * Decimal(juros_diario * 84)),
+            '3x': float(base + base * Decimal(juros_diario * 70)),
+        }
+
+    tabela_pagamentos = [
+        {'nome': 'Dentro - Sem Frete', **calc_pagamentos(Decimal(produto.get('produto_venda_de') or precs['de'][0]))},
+        {'nome': 'Dentro - Com Frete', **calc_pagamentos(Decimal(produto.get('produto_venda_de_fr') or precs['de_fr'][0]))},
+        {'nome': 'Fora - Sem Frete', **calc_pagamentos(Decimal(produto.get('produto_venda_fe') or precs['fe'][0]))},
+        {'nome': 'Fora - Com Frete', **calc_pagamentos(Decimal(produto.get('produto_venda_fe_fr') or precs['fe_fr'][0]))},
+    ]
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        'produtos/editar_produto.html',
+        produto=produto,
+        tipos=tipos,
+        categorias=categorias,
+        unidades=unidades,
+        parametros=parametros,
+        custo_frete=frete,
+        custo_producao=producao,
+        preco_venda_de=float(produto.get('produto_venda_de') or precs['de'][0]),
+        preco_venda_de_fr=float(produto.get('produto_venda_de_fr') or precs['de_fr'][0]),
+        preco_venda_fe=float(produto.get('produto_venda_fe') or precs['fe'][0]),
+        preco_venda_fe_fr=float(produto.get('produto_venda_fe_fr') or precs['fe_fr'][0]),
+        pv_de=precs['de'][0], lucro_liquido_de=precs['de'][1], total_impostos_de=precs['de'][2],
+        lucro_liquido_percent_de=precs['de'][3], custo_total_de=precs['de'][4], outros_custos_r_de=precs['de'][5],
+        pv_de_fr=precs['de_fr'][0], lucro_liquido_de_fr=precs['de_fr'][1], total_impostos_de_fr=precs['de_fr'][2],
+        lucro_liquido_percent_de_fr=precs['de_fr'][3], custo_total_de_fr=precs['de_fr'][4], outros_custos_r_de_fr=precs['de_fr'][5],
+        pv_fe=precs['fe'][0], lucro_liquido_fe=precs['fe'][1], total_impostos_fe=precs['fe'][2],
+        lucro_liquido_percent_fe=precs['fe'][3], custo_total_fe=precs['fe'][4], outros_custos_r_fe=precs['fe'][5],
+        pv_fe_fr=precs['fe_fr'][0], lucro_liquido_fe_fr=precs['fe_fr'][1], total_impostos_fe_fr=precs['fe_fr'][2],
+        lucro_liquido_percent_fe_fr=precs['fe_fr'][3], custo_total_fe_fr=precs['fe_fr'][4], outros_custos_r_fe_fr=precs['fe_fr'][5],
+        tabela_pagamentos=tabela_pagamentos
+    )
+
+@editar_produto_bp.route('/clonar_produto/<int:produtoID>')
+def clonar_produto_view(produtoID):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM produtos WHERE produtoID = %s", (produtoID,))
+    produto = cursor.fetchone()
+    if not produto:
+        return "Produto não encontrado", 404
+
+    cursor.execute("SELECT * FROM tipo")
+    tipos = cursor.fetchall()
+    cursor.execute("SELECT * FROM categoria")
+    categorias = cursor.fetchall()
+    cursor.execute("SELECT * FROM unidades")
+    unidades = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        'cadastros/cadastro_produto.html',
+        produto=produto,
+        tipos=tipos,
+        categorias=categorias,
+        unidades=unidades,
+        clonar=True
+    )
+
+@editar_produto_bp.route('/excluir_produto/<int:produtoID>', methods=['POST'])
+def excluir_produto(produtoID):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM produtos WHERE produtoID = %s", (produtoID,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    flash("Produto excluído com sucesso!", "success")
+    return redirect(url_for('lista_produtos.lista_produtos'))
+
+@editar_produto_bp.route('/categorias_por_tipo/<int:tipo_id>')
+def categorias_por_tipo(tipo_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT categoriaID, categoria FROM categoria WHERE categoria_tipoID = %s", (tipo_id,))
+    categorias = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    print("TIPO ID RECEBIDO:", tipo_id)
+    print("CATEGORIAS RETORNADAS:", categorias)
+
+    return jsonify([
+        {'id': c['categoriaID'], 'nome': c['categoria']} for c in categorias
+    ])

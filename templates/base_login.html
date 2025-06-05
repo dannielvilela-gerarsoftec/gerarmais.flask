@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Título{% endblock %}</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+
+  <!-- DataTables -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
+
+  <!-- Estilos personalizados -->
+  <link href="{{ url_for('static', filename='css/styles_base_login.css') }}" rel="stylesheet" />
+  <link href="{{ url_for('static', filename='css/sidebar.css') }}" rel="stylesheet" />
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+
+  <!-- Wrapper com sidebar e conteúdo -->
+  <div id="wrapper" class="d-flex flex-grow-1 w-100">
+    {% include 'menu.html' %}
+    
+    <!-- Conteúdo principal -->
+    <main id="page-content-wrapper" class="container-fluid py-3 px-4 overflow-auto">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-light border-top mt-auto py-3 px-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+      <div class="d-flex align-items-center">
+        <a href="/" class="me-2 text-body-secondary text-decoration-none lh-1" aria-label="GerarMais">
+          <i class="bi bi-gear-fill fs-5"></i>
+        </a>
+        <span class="text-body-secondary">© 2025 Gerar+ Consultoria</span>
+      </div>
+      <ul class="nav list-unstyled d-flex mb-0">
+        <li class="ms-3">
+          <a class="text-body-secondary" href="#" aria-label="Instagram">
+            <i class="bi bi-instagram fs-5"></i>
+          </a>
+        </li>
+        <li class="ms-3">
+          <a class="text-body-secondary" href="#" aria-label="Facebook">
+            <i class="bi bi-facebook fs-5"></i>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Sidebar toggle
+      const toggleBtn = document.getElementById('sidebarToggle');
+      const wrapper = document.getElementById('wrapper');
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', function () {
+          wrapper.classList.toggle('sidebar-collapsed');
+        });
+      }
+
+      // Inicializar tooltips
+      const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+      });
+
+      // Recolher por padrão em telas pequenas
+      if (window.innerWidth < 768) {
+        wrapper.classList.add('sidebar-collapsed');
+      }
+    });
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

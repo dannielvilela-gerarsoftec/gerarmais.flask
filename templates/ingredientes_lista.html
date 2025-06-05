@@ -1,0 +1,145 @@
+{% extends 'base_login.html' %}
+{% block title %}Ingredientes{% endblock %}
+{% block content %}
+<style>
+    .tabela-sticky thead th {
+        position: sticky;
+        top: 0;
+        background: #f8f9fa;
+        z-index: 2;
+        box-shadow: 0 2px 2px -1px #e0e0e0;
+    }
+    .tabela-sticky thead tr:nth-child(2) th {
+        top: 38px;
+        z-index: 1;
+    }
+    td input[type="number"] {
+        min-width: 90px;
+    }
+    .tabela-sticky th, .tabela-sticky td {
+        white-space: nowrap;
+    }
+</style>
+<div class="container mt-4">
+    <form method="post">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <label for="buscaTabela" class="form-label mb-0">Buscar:</label>
+                <input type="search" id="buscaTabela" class="form-control" placeholder="Digite para buscar…">
+            </div>
+            <div class="col-sm-6 text-end align-self-end">
+                <button type="submit" class="btn btn-success mt-3 mt-sm-0">Salvar Edição</button>
+            </div>
+        </div>
+        <div class="table-responsive" style="max-height: 600px; overflow: auto;">
+            <table class="table table-bordered table-sm align-middle align-top tabela-sticky" id="ingredientes-tabela" style="min-width:1800px;">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="min-width: 130px;">Ingrediente</th>
+                        <th rowspan="2" style="min-width: 110px;">Nomenclatura<br>Rótulo</th>
+                        <th rowspan="2" style="min-width: 60px;">Unidade</th>
+                        <th rowspan="2" style="min-width: 100px;">Preço<br>(R$/kg)</th>
+                        <th rowspan="2" style="min-width: 90px;">Perdas<br>(%)</th>
+                        <th colspan="{{ proteinas|length }}" class="text-center">Proteínas, Energias e Fibras (%)</th>
+                        <th colspan="{{ macros|length }}" class="text-center">Macrominerais (g/kg)</th>
+                        <th colspan="{{ micros|length }}" class="text-center">Microminerais (mg/kg)</th>
+                        {% if aditivos %}
+                            <th colspan="{{ aditivos|length }}" class="text-center">Aditivos</th>
+                        {% endif %}
+                    </tr>
+                    <tr>
+                        {% for nut in proteinas %}
+                            <th style="min-width: 90px;">{{ nut.produto_nome }}</th>
+                        {% endfor %}
+                        {% for macro in macros %}
+                            <th style="min-width: 100px;">{{ macro.produto_nome }}</th>
+                        {% endfor %}
+                        {% for micro in micros %}
+                            <th style="min-width: 100px;">{{ micro.produto_nome }}</th>
+                        {% endfor %}
+                        {% for a in aditivos %}
+                            <th style="min-width: 120px;">{{ a.produto_nome }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ing in ingredientes %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('editar_produto_bp.editar_produto', produtoID=ing.produtoID) }}">
+                                {{ ing.produto_nome }}
+                            </a>
+                        </td>
+                        <td>{{ ing.produto_descricao }}</td>
+                        <td>{{ ing.unidade }}</td>
+                        <td>
+                            <input type="number" step="0.01" name="preco_{{ing.produtoID}}"
+                                   value="{{ ing.produto_custo or '' }}"
+                                   class="form-control">
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" name="perdas_{{ing.produtoID}}"
+                                   value="{{ (ing.produto_perdas*100)|round(2) if ing.produto_perdas is not none else '' }}"
+                                   class="form-control">
+                        </td>
+                        {% for nut in proteinas %}
+                            <td>
+                                <input type="number" step="0.001"
+                                    name="val_{{ing.produtoID}}_{{nut.produtoID}}"
+                                    value="{% if nut.produtoID in IDS_NUTRIENTES_PERCENTUAL %}
+                                              {{ (ingredientes_valores.get(ing.produtoID, {}).get(nut.produtoID, 0)*100)|round(3) if ingredientes_valores.get(ing.produtoID, {}).get(nut.produtoID) is not none else '' }}
+                                          {% else %}
+                                              {{ ingredientes_valores.get(ing.produtoID, {}).get(nut.produtoID, '') }}
+                                          {% endif %}"
+                                    class="form-control">
+                            </td>
+                        {% endfor %}
+                        {% for nut in macros %}
+                            <td>
+                                <input type="number" step="0.001"
+                                    name="val_{{ing.produtoID}}_{{nut.produtoID}}"
+                                    value="{{ ingredientes_valores.get(ing.produtoID, {}).get(nut.produtoID, '') }}"
+                                    class="form-control">
+                            </td>
+                        {% endfor %}
+                        {% for nut in micros %}
+                            <td>
+                                <input type="number" step="0.001"
+                                    name="val_{{ing.produtoID}}_{{nut.produtoID}}"
+                                    value="{{ ingredientes_valores.get(ing.produtoID, {}).get(nut.produtoID, '') }}"
+                                    class="form-control">
+                            </td>
+                        {% endfor %}
+                        {% for a in aditivos %}
+                            <td>
+                                <input type="number" step="0.001"
+                                    name="val_{{ing.produtoID}}_{{a.produtoID}}"
+                                    value="{{ ingredientes_valores.get(ing.produtoID, {}).get(a.produtoID, '') }}"
+                                    class="form-control">
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="mb-2 text-end">
+            <button type="submit" class="btn btn-success">Salvar Edição</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function(){
+    $('#buscaTabela').on('keyup', function(){
+        var termo = $(this).val().toLowerCase();
+        $('#ingredientes-tabela tbody tr').each(function(){
+            var linha = $(this).text().toLowerCase();
+            $(this).toggle(linha.indexOf(termo) !== -1);
+        });
+    });
+});
+</script>
+{% endblock %}

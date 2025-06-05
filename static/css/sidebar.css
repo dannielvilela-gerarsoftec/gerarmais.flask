@@ -1,0 +1,93 @@
+#sidebar {
+  transition: width 0.3s;
+  white-space: nowrap;
+  overflow-x: hidden;
+  width: 250px;
+}
+
+.menu-label {
+  transition: opacity 0.2s, width 0.2s;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+#wrapper.sidebar-collapsed #sidebar {
+  width: 4.5rem !important;
+}
+
+/* Oculta os textos principais */
+#wrapper.sidebar-collapsed #sidebar .menu-label {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+/* Centraliza os ícones */
+#wrapper.sidebar-collapsed #sidebar .nav-link {
+  justify-content: center;
+  text-align: center;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+/* Gira o botão do toggle */
+#wrapper.sidebar-collapsed #sidebarToggle i {
+  transform: rotate(180deg);
+}
+
+/* Submenus continuam visíveis e mais compactos */
+#wrapper.sidebar-collapsed #sidebar ul.submenu {
+  padding-left: 0.25rem !important;
+}
+
+#wrapper.sidebar-collapsed #sidebar .submenu .nav-link {
+  font-size: 0.85rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  justify-content: center;
+}
+
+/* Menus principais com ícones maiores */
+#wrapper.sidebar-collapsed #sidebar .nav-item > div.nav-link {
+  font-size: 1.2rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+/* Tooltips funcionam corretamente */
+#wrapper.sidebar-collapsed #sidebar [data-bs-toggle="tooltip"] {
+  position: relative;
+  z-index: 1050;
+}
+
+/* Responsivo para mobile */
+@media (max-width: 768px) {
+  #sidebar {
+    width: 4.5rem;
+  }
+
+  #sidebar .menu-label {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+  }
+
+  #sidebar .nav-link {
+    justify-content: center;
+  }
+
+  #sidebar ul.submenu {
+    padding-left: 0.25rem !important;
+  }
+
+  #sidebar .submenu .nav-link {
+    font-size: 0.85rem;
+    padding-left: 0.75rem;
+  }
+
+  #sidebar .nav-item > div.nav-link {
+    font-size: 1.2rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+}

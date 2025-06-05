@@ -1,0 +1,111 @@
+<div class="mt-4">
+    <h5>Precificação do Produto</h5>
+    {% include 'partials/_precificacao_tabela.html' %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const blocos = ['de', 'de_fr', 'fe', 'fe_fr'];
+
+    function toDecimal(value) {
+        value = ('' + value).replace(',', '.').replace('R$', '').trim();
+        return parseFloat(value) || 0;
+    }
+
+    function atualizarCamposBloco(bloco) {
+        const input = document.getElementById(`preco_venda_${bloco}`);
+        const valorVenda = toDecimal(input.value);
+        const custoTotal = toDecimal(document.getElementById(`custo_total_${bloco}`).innerText);
+        const impostos = toDecimal(document.getElementById(`total_impostos_${bloco}`).innerText);
+
+        const lucroLiquido = valorVenda - custoTotal - impostos;
+        const lucroPercentual = valorVenda ? (lucroLiquido / valorVenda) * 100 : 0;
+
+        document.getElementById(`lucro_liquido_r_${bloco}`).innerText = `R$ ${lucroLiquido.toFixed(2)}`;
+        document.getElementById(`lucro_liquido_percent_${bloco}`).innerText = `${lucroPercentual.toFixed(2)}%`;
+
+        // Tabela pagamento
+        const juros = {
+            'avista': 0,
+            '28': 0.028,
+            '56': 0.056,
+            '28_56': 0.042,
+            '84': 0.084,
+            '3x': 0.070
+        };
+        for (const prazo in juros) {
+            const fator = 1 + juros[prazo];
+            const campoID = `pagamento_${bloco}_${prazo}`;
+            const campo = document.getElementById(campoID);
+            if (campo) campo.innerText = `R$ ${(valorVenda * fator).toFixed(2)}`;
+        }
+    }
+
+    blocos.forEach(bloco => {
+        const input = document.getElementById(`preco_venda_${bloco}`);
+        if (input) {
+            input.addEventListener('input', () => atualizarCamposBloco(bloco));
+            atualizarCamposBloco(bloco); // Executa ao carregar
+        }
+    });
+});
+</script>
+
+<div class="mt-4">
+    <h5>Condições de Pagamento</h5>
+    <table class="table table-bordered text-center align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Condição</th>
+                <th>Dentro do Estado<br>(Sem frete)</th>
+                <th>Fora do Estado<br>(Sem frete)</th>
+                <th>Dentro do Estado<br>(Com frete)</th>
+                <th>Fora do Estado<br>(Com frete)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>À vista</strong></td>
+                <td id="pagamento_de_avista"></td>
+                <td id="pagamento_fe_avista"></td>
+                <td id="pagamento_de_fr_avista"></td>
+                <td id="pagamento_fe_fr_avista"></td>
+            </tr>
+            <tr>
+                <td><strong>28 dias</strong></td>
+                <td id="pagamento_de_28"></td>
+                <td id="pagamento_fe_28"></td>
+                <td id="pagamento_de_fr_28"></td>
+                <td id="pagamento_fe_fr_28"></td>
+            </tr>
+            <tr>
+                <td><strong>56 dias</strong></td>
+                <td id="pagamento_de_56"></td>
+                <td id="pagamento_fe_56"></td>
+                <td id="pagamento_de_fr_56"></td>
+                <td id="pagamento_fe_fr_56"></td>
+            </tr>
+            <tr>
+                <td><strong>28/56 dias</strong></td>
+                <td id="pagamento_de_28_56"></td>
+                <td id="pagamento_fe_28_56"></td>
+                <td id="pagamento_de_fr_28_56"></td>
+                <td id="pagamento_fe_fr_28_56"></td>
+            </tr>
+            <tr>
+                <td><strong>84 dias</strong></td>
+                <td id="pagamento_de_84"></td>
+                <td id="pagamento_fe_84"></td>
+                <td id="pagamento_de_fr_84"></td>
+                <td id="pagamento_fe_fr_84"></td>
+            </tr>
+            <tr>
+                <td><strong>3x</strong></td>
+                <td id="pagamento_de_3x"></td>
+                <td id="pagamento_fe_3x"></td>
+                <td id="pagamento_de_fr_3x"></td>
+                <td id="pagamento_fe_fr_3x"></td>
+            </tr>
+        </tbody>
+    </table>
+</div>

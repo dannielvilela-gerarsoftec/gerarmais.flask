@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Preço de Venda</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        label { display: block; margin-top: 15px; }
+        input { width: 100%; padding: 10px; margin-top: 5px; }
+        button { padding: 10px; background-color: #28a745; color: white; border: none; cursor: pointer; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Calculadora de Preço de Venda</h1>
+        <label for="custos_compra">Custos de Compra (R$)</label>
+        <input type="number" id="custos_compra" placeholder="Custos de Compra">
+
+        <label for="pis">PIS (%)</label>
+        <input type="number" id="pis" placeholder="PIS">
+
+        <label for="conf">CONF (%)</label>
+        <input type="number" id="conf" placeholder="CONF">
+
+        <label for="irpj">IRPJ (%)</label>
+        <input type="number" id="irpj" placeholder="IRPJ">
+
+        <label for="csll">CSLL (%)</label>
+        <input type="number" id="csll" placeholder="CSLL">
+
+        <label for="icms">ICMS (%)</label>
+        <input type="number" id="icms" placeholder="ICMS">
+
+        <label for="frete">Frete (R$)</label>
+        <input type="number" id="frete" placeholder="Frete">
+
+        <label for="producao">Custos de Produção (R$)</label>
+        <input type="number" id="producao" placeholder="Custos de Produção">
+
+        <label for="lucro">Lucro Líquido Desejado (%)</label>
+        <input type="number" id="lucro" placeholder="Lucro Desejado">
+
+        <button onclick="calcularPrecoVenda()">Calcular</button>
+
+        <h2>Resultados</h2>
+        <p id="resultado_preco_venda"></p>
+        <p id="resultado_impostos"></p>
+        <p id="resultado_lucro_liquido"></p>
+    </div>
+    <script>
+        function calcularPrecoVenda() {
+            const custos_compra = parseFloat(document.getElementById('custos_compra').value);
+            const pis = parseFloat(document.getElementById('pis').value) || 0;
+            const conf = parseFloat(document.getElementById('conf').value) || 0;
+            const irpj = parseFloat(document.getElementById('irpj').value) || 0;
+            const csll = parseFloat(document.getElementById('csll').value) || 0;
+            const icms = parseFloat(document.getElementById('icms').value) || 0;
+            const frete = parseFloat(document.getElementById('frete').value);
+            const producao = parseFloat(document.getElementById('producao').value);
+            const lucro = parseFloat(document.getElementById('lucro').value);
+
+            fetch('/calcular_preco_venda', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    custos_compra: custos_compra,
+                    pis: pis,
+                    conf: conf,
+                    irpj: irpj,
+                    csll: csll,
+                    icms: icms,
+                    frete: frete,
+                    producao: producao,
+                    lucro_desejado: lucro 
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('resultado_preco_venda').innerText = 'Preço de Venda: R$ ' + data.preco_venda.toFixed(2);
+                document.getElementById('resultado_impostos').innerText = 'Total de Impostos: R$ ' + data.total_impostos.toFixed(2);
+                document.getElementById('resultado_lucro_liquido').innerText = 'Lucro Líquido: R$ ' + data.lucro_liquido.toFixed(2);
+            });
+        }
+    </script>
+</body>
+</html>

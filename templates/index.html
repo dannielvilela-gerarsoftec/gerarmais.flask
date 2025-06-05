@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página Inicial</title>
+    <!-- Link para o CSS do Bootstrap -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Link para CSS personalizado -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <!-- Link para ícones do Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Barra de Navegação -->
+    {% extends 'menus/base.html' %}
+
+    {% block title %}Página Inicial{% endblock %}
+    
+    {% block content %}
+    <h1>Bem-vindo à Minha Empresa</h1>
+    <p>Conteúdo da sua página inicial vai aqui.</p>
+    {% endblock %}
+
+    <!-- Conteúdo Principal -->
+    <div class="container text-center mt-5">
+        <h1>Bem-vindo à Minha Empresa</h1>
+        <p class="lead">Gerencie suas operações de forma eficiente e prática.</p>
+        <a href="{{ url_for('produtos/precifica_produtos') }}" class="btn btn-primary mt-3">Ir para Precificação de Produtos</a>
+    </div>
+
+    <!-- Scripts do Bootstrap -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Link para JS personalizado -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

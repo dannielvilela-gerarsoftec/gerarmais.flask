@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Parâmetros</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Parâmetros por Categoria</h2>
+        <form action="{{ url_for('parametros_bp.parametros') }}" method="POST">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Categoria</th>
+                        <th>Produção (R$/TN)</th>
+                        <th>Frete (R$/TN)</th>
+                        <th>Outros Custos (R$/TN)</th>
+                        <th>Lucro Desejado (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for categoria in categorias %}
+                    <tr>
+                        <td>{{ categoria['categoria'] }}</td>
+                        <td><input type="number" class="form-control" name="producao_{{ categoria['categoriaID'] }}" step="0.01" value="{{ categoria['producao'] or '' }}" required></td>
+                        <td><input type="number" class="form-control" name="frete_{{ categoria['categoriaID'] }}" step="0.01" value="{{ categoria['frete'] or '' }}" required></td>
+                        <td><input type="number" class="form-control" name="outros_custos_{{ categoria['categoriaID'] }}" step="0.01" value="{{ categoria['outros_custos'] or '' }}" required></td>
+                        <td><input type="number" class="form-control" name="lucro_desejado_{{ categoria['categoriaID'] }}" step="0.01" value="{{ (categoria['lucro_desejado'] * 100) if categoria['lucro_desejado'] else '' }}" required></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        </form>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.9/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+{% extends "base_login.html" %}
+{% block title %}Tabela de Preços{% endblock %}
+
+{% block content %}
+<h1 class="mt-2 mb-4">Tabela de Preços</h1>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<form method="post" class="mb-4 d-print-none">
+    <div class="mb-3">
+        <label><b>Filtrar Categorias</b></label>
+        <div class="mb-2 d-flex flex-wrap gap-2 align-items-center">
+            <input type="text" id="categoria-busca" class="form-control" placeholder="Buscar categoria..." style="max-width: 340px">
+            <button type="button" class="btn btn-outline-primary btn-sm" id="cat-select-all">Selecionar todas</button>
+            <button type="button" class="btn btn-outline-danger btn-sm" id="cat-deselect-all">Desmarcar todas</button>
+        </div>
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-2" id="categorias-container"
+             style="max-height: 360px; overflow-y: auto; border:1px solid #eaeaea; background:#f9f9f9; border-radius:8px; padding:12px;">
+            {% for categoria in categorias %}
+              <div class="col categoria-item">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="categorias"
+                           value="{{ categoria.categoriaID }}"
+                           id="cat{{ categoria.categoriaID }}"
+                           {% if categoria.categoriaID|string in request.form.getlist('categorias') %}checked{% endif %}>
+                    <label class="form-check-label" for="cat{{ categoria.categoriaID }}">{{ categoria.categoria }}</label>
+                </div>
+              </div>
+            {% endfor %}
+        </div>
+        <small class="text-muted">Selecione uma ou mais categorias. Digite para filtrar.</small>
+    </div>
+
+    <div class="mb-3">
+        <label><b>Frete:</b></label><br>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="frete_opcao" value="sem"
+            {% if request.form.get('frete_opcao','sem') == 'sem' %}checked{% endif %}>
+          <label class="form-check-label">Sem Frete</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="frete_opcao" value="bd"
+            {% if request.form.get('frete_opcao') == 'bd' %}checked{% endif %}>
+          <label class="form-check-label">Usar frete dos parâmetros</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="frete_opcao" value="manual"
+            {% if request.form.get('frete_opcao') == 'manual' %}checked{% endif %}>
+          <label class="form-check-label">Informar valor do frete manualmente</label>
+        </div>
+        <input type="number" step="0.01" min="0" name="frete_manual" class="form-control d-inline-block"
+           style="width:120px; margin-left: 8px;" placeholder="R$/ton" value="{{ request.form.get('frete_manual', '') }}">
+    </div>
+
+    <div class="mb-3">
+        <label><b>Faturamento:</b></label>
+        <select name="dentro_fora" class="form-select" style="max-width:200px;">
+            <option value="dentro" {% if request.form.get('dentro_fora','dentro') == 'dentro' %}selected{% endif %}>Dentro do Estado</option>
+            <option value="fora" {% if request.form.get('dentro_fora') == 'fora' %}selected{% endif %}>Fora do Estado</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label><b>Pareço salvo ou atualizado:</b></label>
+        <select name="modo_preco" class="form-select" style="max-width:220px;">
+            <option value="salvo" {% if request.form.get('modo_preco','salvo') == 'salvo' %}selected{% endif %}>Usar preço salvo</option>
+            <option value="atualizar" {% if request.form.get('modo_preco') == 'atualizar' %}selected{% endif %}>Atualizar preço</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Gerar Relatório</button>
+</form>
+
+<script>
+document.getElementById('categoria-busca').addEventListener('keyup', function () {
+    const filtro = this.value.toLowerCase();
+    document.querySelectorAll('.categoria-item').forEach(function (el) {
+        const texto = el.textContent.toLowerCase();
+        el.style.display = texto.includes(filtro) ? '' : 'none';
+    });
+});
+document.getElementById('cat-select-all').onclick = function() {
+  document.querySelectorAll('#categorias-container input[type="checkbox"]').forEach(cb => cb.checked = true);
+};
+document.getElementById('cat-deselect-all').onclick = function() {
+  document.querySelectorAll('#categorias-container input[type="checkbox"]').forEach(cb => cb.checked = false);
+};
+</script>
+
+{% if resultados %}
+    <div style="margin-top:2em;">
+        <button onclick="window.print();" class="btn btn-success d-print-none mb-3">Imprimir Tabela</button>
+        <h2 class="d-print-block text-center">Tabela de Preços</h2>
+        <div class="text-end mb-2 d-print-block"><small>Gerado em: {{ datahora_geracao }}</small></div>
+        {% for categoria, produtos in resultados.items() %}
+            <h3 style="background:#f1f1f1; padding:3px 10px;">{{ categoria }}</h3>
+            <table class="table table-bordered table-sm mb-4 print-table" style="font-size:0.95em;">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>À Vista</th>
+                        <th>28 Dias</th>
+                        <th>28/56 Dias</th>
+                        <th>56 Dias</th>
+                        <th>84 Dias</th>
+                        <th>3x Cartão</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in produtos %}
+                    <tr>
+                        <td>
+                            {{ p.nome }}
+                            {% if p.msg_dolar %}<br><small style="color:#007bff">{{ p.msg_dolar }}</small>{% endif %}
+                        </td>
+                        <td>R$ {{ p.pagamentos[0]|round(2) }}</td>
+                        <td>R$ {{ p.pagamentos[1]|round(2) }}</td>
+                        <td>R$ {{ p.pagamentos[2]|round(2) }}</td>
+                        <td>R$ {{ p.pagamentos[3]|round(2) }}</td>
+                        <td>R$ {{ p.pagamentos[4]|round(2) }}</td>
+                        <td>R$ {{ p.pagamentos[5]|round(2) }}</td>
+                    </tr>
+                    {% if p.erro_ficha %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="alert alert-danger mb-0 py-2" style="font-size:1em">
+                                {{ p.erro_ficha }}
+                            </div>
+                        </td>
+                    </tr>
+                    {% elif p.ficha_tecnica %}
+                    <tr>
+                        <td colspan="7" style="background:#f6fff6;">
+                            <div class="mb-2"><strong>Ficha técnica - composição detalhada:</strong></div>
+                            <div class="mb-2">
+                                <b>Ingredientes:</b>
+                                <table class="table table-bordered table-sm" style="font-size:0.93em;">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Quantidade</th>
+                                            <th>Perdas consideradas (kg)</th>
+                                            <th>Custo Unitário</th>
+                                            <th>Custo Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in p.ficha_tecnica.ingredientes %}
+                                        <tr>
+                                            <td>{{ item.nome }}</td>
+                                            <td>{{ item.quantidade | round(4) }}</td>
+                                            <td>{{ item.perda_kg | round(4) }}</td>
+                                            <td>R$ {{ item.custo_unit | round(4) }}</td>
+                                            <td>R$ {{ item.custo_total | round(4) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mb-2">
+                                <b>Materiais Extras:</b>
+                                <table class="table table-bordered table-sm" style="font-size:0.93em;">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Quantidade</th>
+                                            <th>Custo Unitário</th>
+                                            <th>Custo Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in p.ficha_tecnica.extras %}
+                                        <tr>
+                                            <td>{{ item.nome }}</td>
+                                            <td>{{ item.quantidade | round(4) }}</td>
+                                            <td>R$ {{ item.custo_unit | round(4) }}</td>
+                                            <td>R$ {{ item.custo_total | round(4) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div>
+                                <strong>Total ingredientes:</strong> R$ {{ p.ficha_tecnica.total_ingredientes | round(4) }}<br>
+                                <strong>Total extras:</strong> R$ {{ p.ficha_tecnica.total_extras | round(4) }}<br>
+                                <strong>Total ficha técnica:</strong> R$ {{ p.ficha_tecnica.custo_total | round(4) }}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="table-responsive d-print-none">
+                <table class="table table-bordered table-hover mb-5" style="background:#f6f9f7">
+                    <thead>
+                        <tr style="background:#d4e3dc">
+                            <th>Produto</th>
+                            <th>Lucro desejado (%)</th>
+                            <th>Lucro calculado (%)</th>
+                            <th>Lucro Líquido (R$)</th>
+                            <th>Custo total (R$)</th>
+                            <th>Total impostos (R$)</th>
+                            <th>Custo frete (R$)</th>
+                            <th>Custo produção (R$)</th>
+                            <th>Outros Custos (R$)</th>
+                            <th>Custo do Produto (R$)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for p in produtos %}
+                        <tr>
+                            <td>{{ p.nome }}</td>
+                            <td>{{ p.lucro_desejado_pct | round(2) }}</td>
+                            <td>{{ p.lucro_calc_pct | round(2) }}</td>
+                            <td>R$ {{ p.lucro_liquido_r | round(2) }}</td>
+                            <td>R$ {{ p.custo_total_r | round(2) }}</td>
+                            <td>R$ {{ p.total_impostos_r | round(2) }}</td>
+                            <td>R$ {{ p.custo_frete_r | round(2) }}</td>
+                            <td>R$ {{ p.custo_producao_r | round(2) }}</td>
+                            <td>R$ {{ p.outros_custos_r | round(2) }}</td>
+                            <td>R$ {{ p.custo_produto_r | round(2) }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+{% endblock %}

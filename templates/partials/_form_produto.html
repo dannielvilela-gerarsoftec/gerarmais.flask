@@ -1,0 +1,127 @@
+<div class="mb-3">
+    <label for="produto_nome">Nome do Produto</label>
+    <input type="text" class="form-control" id="produto_nome" name="produto_nome"
+           style="text-transform: uppercase"
+           value="{{ produto.produto_nome if produto else '' }}" required>
+</div>
+
+<div class="row">
+  <div class="col-md-6 mb-3">
+    <label for="produto_tipoID">Tipo de Produto</label>
+    <select class="form-select" id="produto_tipoID" name="produto_tipoID" required>
+        <option disabled {% if not produto or not produto.produto_tipoID %}selected{% endif %}>Selecione o tipo</option>
+        {% for tipo in tipos %}
+        <option value="{{ tipo.tipoID }}"
+            {% if produto and produto.produto_tipoID == tipo.tipoID %}selected{% endif %}>
+            {{ tipo.tipo }}
+        </option>
+        {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-6 mb-3">
+    <label for="produto_categoriaID">Categoria do Produto</label>
+    <select class="form-select" id="produto_categoriaID" name="produto_categoriaID" required>
+        <option disabled selected>Selecione o tipo primeiro</option>
+    </select>
+  </div>
+</div>
+
+<div class="mb-3">
+    <label for="produto_descricao">Descrição</label>
+    <textarea class="form-control" id="produto_descricao" name="produto_descricao" rows="3"
+              style="text-transform: uppercase">{{ produto.produto_descricao if produto else '' }}</textarea>
+</div>
+
+<div class="row">
+  <div class="col-md-6 mb-3">
+    <label for="produto_peso">Peso (kg)</label>
+    <input type="number" step="0.01" class="form-control" id="produto_peso" name="produto_peso"
+           value="{{ produto.produto_peso if produto else '' }}">
+  </div>
+  <div class="col-md-6 mb-3">
+    <label for="produto_unidadeID">Unidade</label>
+    <select class="form-select" id="produto_unidadeID" name="produto_unidadeID" required>
+        <option disabled {% if not produto or not produto.produto_unidadeID %}selected{% endif %}>Selecione a unidade</option>
+        {% for unidade in unidades %}
+        <option value="{{ unidade.unidadeID }}"
+            {% if produto and produto.produto_unidadeID == unidade.unidadeID %}selected{% endif %}>
+            {{ unidade.unidade }}
+        </option>
+        {% endfor %}
+    </select>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-6 mb-3">
+    <label for="produto_custo">Custo (R$)</label>
+    <input type="number" step="0.01" class="form-control" id="produto_custo" name="produto_custo"
+           value="{{ produto.produto_custo if produto else '' }}">
+  </div>
+  <div class="col-md-6 mb-3">
+    <label for="produto_validade">Validade (dias)</label>
+    <input type="number" class="form-control" id="produto_validade" name="produto_validade"
+           value="{{ produto.produto_validade if produto else '' }}">
+  </div>
+</div>
+
+<div class="mb-3">
+    <label for="produto_fornecedor">Fornecedor</label>
+    <input type="text" class="form-control" id="produto_fornecedor" name="produto_fornecedor"
+           style="text-transform: uppercase"
+           value="{{ produto.produto_fornecedor if produto else '' }}">
+</div>
+
+<!-- Campos ocultos para precificação -->
+<input type="hidden" id="preco_venda_de_hidden" name="preco_venda_de">
+<input type="hidden" id="preco_venda_de_fr_hidden" name="preco_venda_de_fr">
+<input type="hidden" id="preco_venda_fe_hidden" name="preco_venda_fe">
+<input type="hidden" id="preco_venda_fe_fr_hidden" name="preco_venda_fe_fr">
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tipoSelect = document.getElementById('produto_tipoID');
+    const categoriaSelect = document.getElementById('produto_categoriaID');
+
+    async function carregarCategorias(tipoIDSelecionado, categoriaPreSelecionada = null) {
+        categoriaSelect.innerHTML = '<option disabled selected>Carregando categorias...</option>';
+
+        try {
+            const response = await fetch(`/editar_produto/categorias_por_tipo/${tipoIDSelecionado}`);
+
+            const categorias = await response.json();
+
+            categoriaSelect.innerHTML = '<option disabled selected>Selecione a categoria</option>';
+
+            categorias.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = cat.nome;
+                if (categoriaPreSelecionada && parseInt(categoriaPreSelecionada) === cat.id) {
+                    option.selected = true;
+                }
+                categoriaSelect.appendChild(option);
+            });
+
+        } catch (err) {
+            categoriaSelect.innerHTML = '<option disabled selected>Erro ao carregar categorias</option>';
+            console.error('Erro ao buscar categorias:', err);
+        }
+    }
+
+    tipoSelect.addEventListener('change', function () {
+        const tipoID = tipoSelect.value;
+        if (tipoID) {
+            carregarCategorias(tipoID);
+        }
+    });
+
+    // Executa ao carregar a página (caso esteja editando)
+    const tipoInicial = tipoSelect.value;
+    const categoriaAtual = "{{ produto.produto_categoriaID if produto else '' }}";
+    if (tipoInicial) {
+        carregarCategorias(tipoInicial, categoriaAtual);
+    }
+});
+</script>

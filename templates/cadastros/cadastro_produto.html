@@ -1,0 +1,77 @@
+{% extends "base_login.html" %}
+{% block title %}Cadastro de Produto{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+  {% if produto_cadastrado %}
+  <div class="modal fade" id="modalPosCadastro" tabindex="-1" aria-labelledby="modalPosCadastroLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title" id="modalPosCadastroLabel">Produto cadastrado</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+            Produto cadastrado com sucesso.<br>Deseja ir para a página de precificação?
+        </div>
+        <div class="modal-footer">
+            <a href="{{ url_for('editar_produto_bp.editar_produto', produtoID=produto_id) }}" class="btn btn-primary">Sim</a>
+            <a href="{{ url_for('lista_produtos.lista_produtos') }}" class="btn btn-secondary">Não</a>
+        </div>
+        </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb bg-body-tertiary border rounded-3 px-3 py-2 d-flex align-items-center">
+      <li class="breadcrumb-item">
+        <a class="text-decoration-none" href="{{ url_for('pg_inicial') }}">Início</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a class="text-decoration-none" href="{{ url_for('lista_produtos.lista_produtos') }}">Produtos</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">
+        Cadastrar Produto
+      </li>
+      <li class="ms-auto">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-success btn-sm" form="form-cadastro-produto">Salvar</button>
+          <a href="{{ url_for('lista_produtos.lista_produtos') }}" class="btn btn-secondary btn-sm">Voltar</a>
+        </div>
+      </li>
+    </ol>
+  </nav>
+
+  <form id="form-cadastro-produto" action="{{ url_for('cadastro_produto_bp.cadastro_produto') }}" method="POST" class="needs-validation" novalidate>
+      {% include 'partials/_form_produto.html' %}
+  </form>
+</div>
+
+<script>
+(function() {
+  'use strict';
+  window.addEventListener('load', function() {
+    var forms = document.getElementsByClassName('needs-validation');
+    Array.prototype.forEach.call(forms, function(form) {
+      form.addEventListener('submit', function(event) {
+        if (form.checkValidity() === false) {
+          event.preventDefault();
+          event.stopPropagation();
+        } else {
+          $('#resultModal').modal('show');
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  }, false);
+})();
+
+$(document).ready(function () {
+    {% if produto_cadastrado %}
+      $('#modalPosCadastro').modal('show');
+    {% endif %}
+});
+</script>
+{% endblock %}

@@ -1,0 +1,413 @@
+{% extends "base_login.html" %}
+{% block title %}{{ "Editar" if edit_mode else "Nova" }} Formulação{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="container mt-2">
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% endwith %}
+
+    <h3>{{ "Editar" if edit_mode else "Nova" }} Formulação</h3>
+    <form method="POST" id="form-formulacao" autocomplete="off">
+
+        <div class="row mb-2">
+            <div class="col-5">
+                <label>Produto</label>
+                <select name="produtoID" id="produtoID" class="form-select" required {% if edit_mode %}disabled{% endif %}>
+                    <option value="">Selecione…</option>
+                    {% for p in produtos %}
+                        <option value="{{ p.produtoID }}" data-categoria="{{ p.produto_categoriaID }}"
+                                {% if (ficha and p.produtoID == ficha.produtoID) %}selected{% endif %}>
+                            {{ p.produto_nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+                {% if edit_mode %}
+                    <input type="hidden" name="produtoID" value="{{ ficha.produtoID }}">
+                {% endif %}
+            </div>
+            <div class="col-5">
+                <label>Nome da Formulação</label>
+                <input type="text" name="ficha_tecnica_nome" class="form-control" required 
+                    value="{{ ficha.ficha_tecnica_nome if ficha else '' }}">
+            </div>
+            <div class="col-2">
+                <label>Ativo?</label>
+                <input type="checkbox" name="ativo" {% if ficha and ficha.ativo %}checked{% elif not ficha %}checked{% endif %}>
+            </div>
+        </div>
+
+        <div class="row mb-2">
+            <div class="col-4">
+                <label>Misturador (Kg)</label>
+                <input type="number" step="0.01" name="misturador" id="misturador" class="form-control" 
+                    required min="0.01" value="{{ ficha.misturador if ficha else '' }}">
+            </div>
+            <div class="col-4">
+                <label>Peso Sacaria (Kg)</label>
+                <input type="number" step="0.01" id="peso_sacaria" class="form-control" readonly 
+                  value="{% if ficha %}{% for p in produtos %}{% if p.produtoID == ficha.produtoID %}{{ p.produto_peso }}{% endif %}{% endfor %}{% endif %}">
+            </div>
+            <div class="col-4">
+                <label>Sacos por Batida</label>
+                <input type="number" id="sacos_batida" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div id="percentual-total-alerta" class="alert alert-warning d-none">
+            A soma dos percentuais deve ser 100%. Soma atual: <span id="percentual-total">0</span>
+        </div>
+
+        <h5 class="mt-4">Ingredientes</h5>
+        <table class="table" id="tabela-ingredientes">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Ingrediente</th>
+                    <th>Percentual (%)</th>
+                    <th>Peso no Saco (kg)</th>
+                    <th>Perdas consideradas (kg)</th>
+                    <th>R$ no Saco</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if ingredientes_ficha and ingredientes_ficha|length > 0 %}
+                    {% for ing in ingredientes_ficha %}
+                    <tr>
+                        <td>
+                            <button type="button" class="btn btn-link text-danger" onclick="removerLinha(this)">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </td>
+                        <td>
+                            <select name="ingrediente_{{ loop.index0 }}" class="form-select ingrediente-sel" required>
+                                {% for i in ingredientes %}
+                                    <option value="{{ i.produtoID }}" {% if i.produtoID == ing.produtoID %}selected{% endif %}>
+                                        {{ i.produto_nome }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" name="percentual_{{ loop.index0 }}" 
+                                class="form-control percentual" min="0" max="100" step="0.0001" required
+                                value="{{ ing.ficha_tecnica_percentual }}">
+                        </td>
+                        <td class="peso-saco">{% if ing.ficha_tecnica_quantidade is defined %}{{ ing.ficha_tecnica_quantidade|round(4) }}{% else %}0{% endif %}</td>
+                        <td class="perda-kg">0</td>
+                        <td class="custo-saco">0</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td>
+                            <button type="button" class="btn btn-link text-danger" onclick="removerLinha(this)">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </td>
+                        <td>
+                            <select name="ingrediente_0" class="form-select ingrediente-sel" required>
+                                {% for i in ingredientes %}
+                                    <option value="{{ i.produtoID }}">{{ i.produto_nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" name="percentual_0" class="form-control percentual"
+                                   min="0" max="100" step="0.0001" required>
+                        </td>
+                        <td class="peso-saco">0</td>
+                        <td class="perda-kg">0</td>
+                        <td class="custo-saco">0</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-secondary" onclick="adicionarLinha()">Adicionar Ingrediente</button>
+        <div class="text-end my-2">
+            <b>Total ingredientes: R$ <span id="total-custo-ing">0,00</span></b>
+        </div>
+        <div id="explicacao-conversao-moeda" class="my-2 text-info" style="min-height:2em;"></div>
+
+        <h5 class="mt-4">Custos Adicionais: Embalagem/Outros</h5>
+        <table class="table" id="tabela-extras">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Material</th>
+                    <th>Quantidade</th>
+                    <th>Valor unit. (R$)</th>
+                    <th>Total (R$)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for extra in extras_ficha %}
+                <tr>
+                    <td>
+                        <button type="button" class="btn btn-link text-danger" onclick="removerLinhaExtra(this)">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </td>
+                    <td>
+                        <select name="extra_produto_{{ loop.index0 }}" class="form-select extra-sel" required>
+                            {% for i in extras %}
+                                <option value="{{ i.produtoID }}" data-valor="{{ i.produto_custo }}" {% if extra.produtoID == i.produtoID %}selected{% endif %}>
+                                    {{ i.produto_nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" name="extra_quantidade_{{ loop.index0 }}" 
+                               class="form-control extra-quantidade" step="0.001" min="0"
+                               value="{{ extra.extra_quantidade }}" required>
+                    </td>
+                    <td>
+                        <span class="valor-unitario"></span>
+                    </td>
+                    <td>
+                        <span class="valor-total-extra"></span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-secondary" onclick="adicionarLinhaExtra()">Adicionar Material Extra</button>
+        <div class="text-end my-2">
+            <b>Total adicionais: R$ <span id="total-custo-extras">0,00</span></b>
+        </div>
+        {% if custo_producao and custo_producao > 0 %}
+          <div class="text-end my-2">
+              <b>Custo de Produção: R$ <span id="custo-producao">{{ custo_producao | round(2) }}</span></b>
+          </div>
+        {% endif %}
+        <hr>
+        <div class="text-end my-2 fs-4">
+            <b>Custo total do produto: <span id="custo-total-produto" class="text-success">R$ 0,00</span></b>
+        </div>
+        <button type="submit" class="btn btn-success mt-3">Salvar Formulação</button>
+    </form>
+</div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+const produtoCustoCache = {};
+const produtoPerdaCache = {};
+const custoOportunidadeCache = {};
+let categoriaProduto = {{ produto_categoriaID or 'null' }};
+
+async function getProdutoCusto(produtoID) {
+    if (produtoCustoCache[produtoID] !== undefined) return produtoCustoCache[produtoID];
+    let res = await fetch('/produtos/custo/' + produtoID);
+    let data = await res.json();
+    produtoCustoCache[produtoID] = data;
+    return data;
+}
+async function getProdutoPerda(produtoID) {
+    if (produtoPerdaCache[produtoID] !== undefined) return produtoPerdaCache[produtoID];
+    let res = await fetch('/produtos/perda/' + produtoID);
+    let data = await res.json();
+    produtoPerdaCache[produtoID] = data.produto_perda;
+    return data.produto_perda;
+}
+async function getCustoOportunidade(categoriaID) {
+    if (custoOportunidadeCache[categoriaID] !== undefined) return custoOportunidadeCache[categoriaID];
+    let res = await fetch('/parametros/custo_oportunidade/' + categoriaID);
+    let data = await res.json();
+    custoOportunidadeCache[categoriaID] = data.custo_oportunidade;
+    return data.custo_oportunidade;
+}
+
+// Atualiza todos os cálculos conforme os percentuais e dado do produto
+async function atualizarCustos() {
+    const pesoSaco = parseFloat(document.getElementById('peso_sacaria').value) || 0;
+    let totalIng = 0;
+    let percentualTotal = 0;
+    let rows = document.querySelectorAll("#tabela-ingredientes tbody tr");
+    let explicacoes = [];
+    let rowIndex = 0;
+    for (const row of rows) {
+        const select = row.querySelector('select');
+        const percentual = parseFloat(row.querySelector('.percentual').value) || 0;
+        percentualTotal += percentual;
+        let peso = pesoSaco * percentual / 100;
+        row.querySelector('.peso-saco').textContent = peso.toFixed(4);
+        let perda_percent = 0;
+
+        if (select && select.value) {
+            perda_percent = parseFloat(await getProdutoPerda(select.value)) || 0;
+        }
+        let perda_kg = peso * (perda_percent);
+        row.querySelector('.perda-kg').textContent = perda_kg.toFixed(4);
+        let custo = 0;
+        if (select && select.value) {
+            let custo_data = await getProdutoCusto(select.value);
+            let moeda = custo_data.produto_custo_moeda;
+            let custo_real = custo_data.produto_custo;
+            let custo_dolar = custo_data.produto_custo_dolar;
+            let valor_usado = custo_real;
+            let explicacao = '';
+            if (moeda === "U" && custo_dolar > 0) {
+                let ptaxResp = await fetch('/ptax');
+                let ptaxData = await ptaxResp.json();
+                let valor_convertido = custo_dolar * ptaxData.ptax;
+                valor_usado = Math.max(valor_convertido, custo_real);
+                explicacao = `${select.options[select.selectedIndex].text}: Custo convertido (USD) = R$ ${valor_convertido.toFixed(4)}, Custo em real = R$ ${custo_real.toFixed(4)}, PTAX ${ptaxData.ptax.toFixed(4)} (${ptaxData.data}). Valor utilizado: R$ ${valor_usado.toFixed(4)}.`;
+            }
+            let custo_oportunidade = 0;
+            if (categoriaProduto) {
+                custo_oportunidade = await getCustoOportunidade(categoriaProduto);
+            }
+            if (custo_oportunidade && custo_oportunidade !== 0) {
+                valor_usado = valor_usado + (valor_usado * (custo_oportunidade));
+            }
+            custo = (peso + perda_kg) * valor_usado;
+            row.querySelector('.custo-saco').textContent = custo.toFixed(4);
+            if (explicacao) explicacoes.push(explicacao);
+        }
+        totalIng += custo;
+        rowIndex++;
+    }
+    document.getElementById('total-custo-ing').textContent = totalIng.toFixed(2);
+    document.getElementById('explicacao-conversao-moeda').innerHTML = explicacoes.join('<br>');
+
+    // Validação soma percentual
+    document.getElementById('percentual-total').textContent = percentualTotal.toFixed(4);
+    if (Math.abs(percentualTotal - 100) > 0.001) {
+        document.getElementById('percentual-total-alerta').classList.remove('d-none');
+    } else {
+        document.getElementById('percentual-total-alerta').classList.add('d-none');
+    }
+
+    // Custos extras
+    let totalExtras = 0;
+    document.querySelectorAll('#tabela-extras tbody tr').forEach(row => {
+        const select = row.querySelector('.extra-sel');
+        const quantidade = parseFloat(row.querySelector('.extra-quantidade').value) || 0;
+        let valorUnit = 0;
+        if (select && select.selectedOptions.length > 0){ 
+            valorUnit = parseFloat(select.selectedOptions[0].getAttribute('data-valor')) || 0;
+        }
+        row.querySelector('.valor-unitario').textContent = valorUnit.toFixed(2);
+        let total = quantidade * valorUnit;
+        row.querySelector('.valor-total-extra').textContent = total.toFixed(2);
+        totalExtras += total;
+    });
+    document.getElementById('total-custo-extras').textContent = totalExtras.toFixed(2);
+
+    // Custo produção (se existir)
+    let custoProducao = 0;
+    if (document.getElementById('custo-producao')) {
+        custoProducao = parseFloat(document.getElementById('custo-producao').textContent) || 0;
+    }
+    let totalProdutos = totalIng + totalExtras + custoProducao;
+    document.getElementById('custo-total-produto').textContent = 'R$ ' + totalProdutos.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+// Cálculo SACOS POR BATIDA ---------------------------
+function atualizarSacosBatida() {
+    const misturador = parseFloat(document.getElementById('misturador').value) || 0;
+    const pesoSaco = parseFloat(document.getElementById('peso_sacaria').value) || 0;
+    let sacos = 0;
+    if (misturador > 0 && pesoSaco > 0) {
+        sacos = misturador / pesoSaco;
+    }
+    document.getElementById('sacos_batida').value = sacos > 0 ? sacos.toFixed(2) : '';
+}
+// -----------------------------------------------------
+
+function adicionarLinha() {
+    var tabela = document.getElementById('tabela-ingredientes').getElementsByTagName('tbody')[0];
+    var rowCount = tabela.rows.length;
+    var newRow = tabela.insertRow(rowCount);
+    newRow.innerHTML = `<td>
+        <button type="button" class="btn btn-link text-danger" onclick="removerLinha(this)">
+            <i class="bi bi-trash-fill"></i>
+        </button>
+    </td>
+    <td>
+        <select name="ingrediente_${rowCount}" class="form-select ingrediente-sel" required>
+            {% for i in ingredientes %}
+                <option value="{{ i.produtoID }}">{{ i.produto_nome }}</option>
+            {% endfor %}
+        </select>
+    </td>
+    <td>
+        <input type="number" name="percentual_${rowCount}" class="form-control percentual"
+            min="0" max="100" step="0.0001" required>
+    </td>
+    <td class="peso-saco">0</td>
+    <td class="perda-kg">0</td>
+    <td class="custo-saco">0</td>`;
+    atualizarCustos();
+}
+
+function removerLinha(btn) {
+    var row = btn.closest('tr');
+    row.remove();
+    atualizarCustos();
+}
+
+function adicionarLinhaExtra() {
+    var tabela = document.getElementById('tabela-extras').getElementsByTagName('tbody')[0];
+    var rowCount = tabela.rows.length;
+    var newRow = tabela.insertRow(rowCount);
+    newRow.innerHTML = `<td>
+        <button type="button" class="btn btn-link text-danger" onclick="removerLinhaExtra(this)">
+            <i class="bi bi-trash-fill"></i>
+        </button>
+    </td>
+    <td>
+        <select name="extra_produto_${rowCount}" class="form-select extra-sel" required>
+            {% for i in extras %}
+                <option value="{{ i.produtoID }}" data-valor="{{ i.produto_custo }}">{{ i.produto_nome }}</option>
+            {% endfor %}
+        </select>
+    </td>
+    <td>
+        <input type="number" name="extra_quantidade_${rowCount}" class="form-control extra-quantidade" step="0.001" min="0" required>
+    </td>
+    <td>
+        <span class="valor-unitario"></span>
+    </td>
+    <td>
+        <span class="valor-total-extra"></span>
+    </td>`;
+    atualizarCustos();
+}
+
+function removerLinhaExtra(btn) {
+    var row = btn.closest('tr');
+    row.remove();
+    atualizarCustos();
+}
+
+document.addEventListener('input', function(e) {
+    if (
+        e.target.classList.contains('percentual') || 
+        e.target.id === 'peso_sacaria' || 
+        e.target.id === 'misturador' || // agora também responde ao atualizar misturador!
+        e.target.classList.contains('ingrediente-sel') || 
+        e.target.classList.contains('extra-quantidade') ||
+        e.target.classList.contains('extra-sel')
+    ) {
+        atualizarCustos();
+        atualizarSacosBatida();
+    }
+});
+document.addEventListener('DOMContentLoaded', function() {
+    atualizarCustos();
+    atualizarSacosBatida();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Primeiro Cadastro</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">O Primeiro Cadastro</h1>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="alert alert-warning">
+              {% for message in messages %}
+                <p>{{ message }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        <form id="cadastroForm" method="POST" action="{{ url_for('empresa.cadastro_empresa') }}" novalidate>
+            <h2>Dados da Empresa:</h2>
+            <div class="form-group">
+                <label for="cnpj">CNPJ</label>
+                <input type="text" class="form-control" id="cnpj" name="cnpj" maxlength="18" required>
+                <div class="invalid-feedback">CNPJ inválido ou já cadastrado.</div>
+            </div>
+            <div class="form-group">
+                <label for="razao_social">Razão Social</label>
+                <input type="text" class="form-control" id="razao_social" name="razao_social" required>
+            </div>
+            <div class="form-group">
+                <label for="nome_fantasia">Nome Fantasia</label>
+                <input type="text" class="form-control" id="fantasia" name="fantasia" required>
+            </div>
+
+            <h2>Dados do Usuário:</h2>
+            <div class="form-group">
+                <label for="cargo">Cargo</label>
+                <select class="form-control" id="cargo" name="cargo" required>
+                    {% for cargo in cargos %}
+                        <option value="{{ cargo['cargoID'] }}">{{ cargo['cargo'] }}</option>
+                    {% endfor %}
+                </select>
+                <div class="invalid-feedback">Por favor, selecione um cargo.</div>
+            </div>
+            <div class="form-group">
+                <label for="nome">Primeiro Nome</label>
+                <input type="text" class="form-control" id="nome" name="nome" maxlength="20" required>
+            </div>
+            <div class="form-group">
+                <label for="ultimo_nome">Último Nome</label>
+                <input type="text" class="form-control" id="ultimo_nome" name="ultimo_nome" maxlength="30" required>
+            </div>
+            <div class="form-group">
+                <label for="cpf">CPF</label>
+                <input type="text" class="form-control" id="cpf" name="cpf" maxlength="14" required>
+                <div class="invalid-feedback">CPF inválido ou já cadastrado.</div>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" class="form-control" id="email" name="email" maxlength="50" required>
+                <div class="invalid-feedback">Email inválido.</div>
+            </div>
+            <div class="form-group">
+                <label for="senha">Senha</label>
+                <input type="password" class="form-control" id="senha" name="senha" minlength="8" required>
+                <div class="invalid-feedback">A senha deve ter pelo menos 8 caracteres.</div>
+            </div>
+            <div class="form-group">
+                <label for="confirma_senha">Confirma Senha</label>
+                <input type="password" class="form-control" id="confirma_senha" name="confirma_senha" minlength="8" required>
+                <div class="invalid-feedback">As senhas não coincidem.</div>
+            </div>
+
+            <!-- Campo de Data oculto -->
+            <input type="hidden" id="data" name="data">
+
+            <button type="submit" class="btn btn-primary">Cadastrar</button>
+        </form>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        function aplicarMascaraCNPJ(cnpj) {
+            cnpj = cnpj.replace(/\D/g, "").replace(/^(\d{2})(\d)/, "$1.$2")
+                       .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+                       .replace(/\.(\d{3})(\d)/, ".$1/$2")
+                       .replace(/(\d{4})(\d)/, "$1-$2");
+            return cnpj;
+        }
+
+        function aplicarMascaraCPF(cpf) {
+            cpf = cpf.replace(/\D/g, "").replace(/(\d{3})(\d)/, "$1.$2")
+                     .replace(/(\d{3})(\d)/, "$1.$2")
+                     .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+            return cpf;
+        }
+
+        function removerMascara(valor) {
+            return valor.replace(/\D/g, "");
+        }
+
+        function validarCNPJ(cnpj) {
+            cnpj = removerMascara(cnpj);
+            if (cnpj.length !== 14) return false;
+            // Adicionar validação de CNPJ aqui
+            return true; // Supondo que a validação seja implementada
+        }
+
+        function validarCPF(cpf) {
+            cpf = removerMascara(cpf);
+            if (cpf.length !== 11) return false;
+            // Adicionar validação de CPF aqui
+            return true; // Supondo que a validação seja implementada
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const cnpjInput = document.getElementById("cnpj");
+            const cpfInput = document.getElementById("cpf");
+            const emailInput = document.getElementById("email");
+            const senhaInput = document.getElementById("senha");
+            const confirmaSenhaInput = document.getElementById("confirma_senha");
+            const dataInput = document.getElementById("data");
+
+            // Preencher a data com a data atual
+            const hoje = new Date();
+            const dia = String(hoje.getDate()).padStart(2, '0');
+            const mes = String(hoje.getMonth() + 1).padStart(2, '0'); // Janeiro é 0!
+            const ano = hoje.getFullYear();
+            dataInput.value = `${ano}-${mes}-${dia}`;
+
+            cnpjInput.addEventListener("input", function() {
+                this.value = aplicarMascaraCNPJ(this.value);
+            });
+
+            cpfInput.addEventListener("input", function() {
+                this.value = aplicarMascaraCPF(this.value);
+            });
+
+            senhaInput.addEventListener("blur", function() {
+                if (senhaInput.value.length < 8) {
+                    senhaInput.classList.add("is-invalid");
+                } else {
+                    senhaInput.classList.remove("is-invalid");
+                }
+            });
+
+            confirmaSenhaInput.addEventListener("blur", function() {
+                if (senhaInput.value !== confirmaSenhaInput.value) {
+                    confirmaSenhaInput.classList.add("is-invalid");
+                } else {
+                    confirmaSenhaInput.classList.remove("is-invalid");
+                }
+            });
+
+            document.getElementById("cadastroForm").addEventListener("submit", function(event) {
+                cnpjInput.value = removerMascara(cnpjInput.value);
+                cpfInput.value = removerMascara(cpfInput.value);
+
+                let formValido = true;
+
+                if (!validarCNPJ(cnpjInput.value)) {
+                    cnpjInput.classList.add("is-invalid");
+                    formValido = false;
+                } else {
+                    cnpjInput.classList.remove("is-invalid");
+                }
+
+                if (!validarCPF(cpfInput.value)) {
+                    cpfInput.classList.add("is-invalid");
+                    formValido = false;
+                } else {
+                    cpfInput.classList.remove("is-invalid");
+                }
+
+                if (senhaInput.value.length < 8) {
+                    senhaInput.classList.add("is-invalid");
+                    formValido = false;
+                } else {
+                    senhaInput.classList.remove("is-invalid");
+                }
+
+                if (senhaInput.value !== confirmaSenhaInput.value) {
+                    confirmaSenhaInput.classList.add("is-invalid");
+                    formValido = false;
+                } else {
+                    confirmaSenhaInput.classList.remove("is-invalid");
+                }
+
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(emailInput.value)) {
+                    emailInput.classList.add("is-invalid");
+                    formValido = false;
+                } else {
+                    emailInput.classList.remove("is-invalid");
+                }
+
+                if (!formValido) {
+                    event.preventDefault();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

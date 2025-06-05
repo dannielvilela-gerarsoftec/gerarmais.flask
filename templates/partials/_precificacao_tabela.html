@@ -1,0 +1,81 @@
+<table class="table table-bordered text-center align-middle">
+    <thead class="table-light">
+        <tr>
+            <th>Indicadores</th>
+            <th>Dentro do Estado<br>(Sem frete)</th>
+            <th>Fora do Estado<br>(Sem frete)</th>
+            <th>Dentro do Estado<br>(Com frete)</th>
+            <th>Fora do Estado<br>(Com frete)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Preço de venda sugerido</strong></td>
+            <td id="pv_sugerido_de">R$ {{ '%.2f' % pv_de }}</td>
+            <td id="pv_sugerido_fe">R$ {{ '%.2f' % pv_fe }}</td>
+            <td id="pv_sugerido_de_fr">R$ {{ '%.2f' % pv_de_fr }}</td>
+            <td id="pv_sugerido_fe_fr">R$ {{ '%.2f' % pv_fe_fr }}</td>
+        </tr>
+        <tr>
+            <td><strong>Lucro líquido desejado (%)</strong></td>
+            <td colspan="4" id="lucro_desejado">{{ (parametros.lucro_desejado * 100)|round(2) if parametros.lucro_desejado else '0.00' }}%</td>
+        </tr>
+        <tr>
+            <td><strong>Preço de venda (editável)</strong></td>
+            <td><input type="number" step="0.01" class="form-control" id="preco_venda_de" value="{{ '%.2f' % preco_venda_de }}"></td>
+            <td><input type="number" step="0.01" class="form-control" id="preco_venda_fe" value="{{ '%.2f' % preco_venda_fe }}"></td>
+            <td><input type="number" step="0.01" class="form-control" id="preco_venda_de_fr" value="{{ '%.2f' % preco_venda_de_fr }}"></td>
+            <td><input type="number" step="0.01" class="form-control" id="preco_venda_fe_fr" value="{{ '%.2f' % preco_venda_fe_fr }}"></td>
+        </tr>
+        <tr>
+            <td><strong>Lucro líquido (R$)</strong></td>
+            <td id="lucro_liquido_r_de">R$ {{ '%.2f' % lucro_liquido_de }}</td>
+            <td id="lucro_liquido_r_fe">R$ {{ '%.2f' % lucro_liquido_fe }}</td>
+            <td id="lucro_liquido_r_de_fr">R$ {{ '%.2f' % lucro_liquido_de_fr }}</td>
+            <td id="lucro_liquido_r_fe_fr">R$ {{ '%.2f' % lucro_liquido_fe_fr }}</td>
+        </tr>
+        <tr>
+            <td><strong>Lucro líquido (%)</strong></td>
+            <td id="lucro_liquido_percent_de">{{ '%.2f' % lucro_liquido_percent_de }}%</td>
+            <td id="lucro_liquido_percent_fe">{{ '%.2f' % lucro_liquido_percent_fe }}%</td>
+            <td id="lucro_liquido_percent_de_fr">{{ '%.2f' % lucro_liquido_percent_de_fr }}%</td>
+            <td id="lucro_liquido_percent_fe_fr">{{ '%.2f' % lucro_liquido_percent_fe_fr }}%</td>
+        </tr>
+        <tr>
+            <td><strong>Impostos (R$)</strong></td>
+            <td id="total_impostos_de">R$ {{ '%.2f' % total_impostos_de }}</td>
+            <td id="total_impostos_fe">R$ {{ '%.2f' % total_impostos_fe }}</td>
+            <td id="total_impostos_de_fr">R$ {{ '%.2f' % total_impostos_de_fr }}</td>
+            <td id="total_impostos_fe_fr">R$ {{ '%.2f' % total_impostos_fe_fr }}</td>
+        </tr>
+        <tr>
+            <td><strong>Custo total (R$)</strong></td>
+            <td id="custo_total_de">R$ {{ '%.2f' % custo_total_de }}</td>
+            <td id="custo_total_fe">R$ {{ '%.2f' % custo_total_fe }}</td>
+            <td id="custo_total_de_fr">R$ {{ '%.2f' % custo_total_de_fr }}</td>
+            <td id="custo_total_fe_fr">R$ {{ '%.2f' % custo_total_fe_fr }}</td>
+        </tr>
+        <tr>
+            <td><strong>Outros custos (R$)</strong></td>
+            <td id="outros_custos_de">R$ {{ '%.2f' % outros_custos_r_de }}</td>
+            <td id="outros_custos_fe">R$ {{ '%.2f' % outros_custos_r_fe }}</td>
+            <td id="outros_custos_de_fr">R$ {{ '%.2f' % outros_custos_r_de_fr }}</td>
+            <td id="outros_custos_fe_fr">R$ {{ '%.2f' % outros_custos_r_fe_fr }}</td>
+        </tr>
+        <tr>
+            <td><strong>Frete (R$)</strong></td>
+            <td id="custo_frete_de">R$ 0.00</td>
+            <td id="custo_frete_fe">R$ 0.00</td>
+            <td id="custo_frete_de_fr">R$ {{ '%.2f' % custo_frete }}</td>
+            <td id="custo_frete_fe_fr">R$ {{ '%.2f' % custo_frete }}</td>
+        </tr>
+        <tr>
+            <td><strong>Produção (R$)</strong></td>
+            <td colspan="4" id="custo_producao">R$ {{ '%.2f' % custo_producao }}</td>
+        </tr>
+        <tr>
+            <td><strong>Custo do produto (R$)</strong></td>
+            <td colspan="4" id="custo_produto">R$ {{ '%.2f' % produto.produto_custo }}</td>
+        </tr>
+    </tbody>
+</table>

@@ -1,0 +1,84 @@
+{% extends "base_login.html" %}
+{% block title %}Lista de Formulações{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Formulações de Produtos</h2>
+    <a href="{{ url_for('precifica_formulacao_bp.criar_formula') }}" class="btn btn-success mb-3">Nova Formulação</a>
+    <table id="tabela-formulacoes" class="table table-bordered table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Produto</th>
+                <th>Formulação</th>
+                <th>Ativa?</th>
+                <th>Misturador (Kg)</th>
+                <th>Peso Sacaria (Kg)</th>
+                <th>Ingredientes</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for f in formulacoes %}
+            <tr>
+                <td>{{ f.produto_nome }}</td>
+                <td>{{ f.ficha_tecnica_nome }}</td>
+                <td>
+                    {% if f.ativo %}
+                        <span class="badge bg-success">Ativa</span>
+                    {% else %}
+                        <span class="badge bg-danger">Inativa</span>
+                    {% endif %}
+                </td>
+                <td>{{ f.misturador | round(2) }}</td>
+                <td>{{ f.produto_peso | round(2) }}</td>
+                <td>
+                    <ul class="m-0 ps-3">
+                    {% for ing in f.ingredientes %}
+                        <li>{{ ing.produto_nome }}: {{ ing.ficha_tecnica_quantidade | round(2) }}%</li>
+                    {% endfor %}
+                    </ul>
+                </td>
+                <td>
+                    <a href="{{ url_for('precifica_formulacao_bp.editar_formula', ficha_tecnicaID=f.ficha_tecnicaID) }}" class="btn btn-primary btn-sm">Editar/Visualizar</a>
+                </td>
+            </tr>
+        {% endfor %}
+        {% if formulacoes|length == 0 %}
+            <tr>
+                <td colspan="7" class="text-center">Nenhuma formulação cadastrada até o momento.</td>
+            </tr>
+        {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    var table = $('#tabela-formulacoes').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json"
+        }
+    });
+
+    // Adiciona um filtro do tipo "select" na coluna Produto (primeira coluna)
+    $('#tabela-formulacoes thead th').each(function(i) {
+        if (i === 0) { // Apenas para a coluna Produto
+            var select = $('<select><option value="">Todos os Produtos</option></select>')
+                .appendTo($(this).empty())
+                .on('change', function() {
+                    table.column(i)
+                        .search($(this).val())
+                        .draw();
+                });
+            table.column(i).data().unique().sort().each(function(d, j) {
+                // Remove tags HTML, caso existam
+                d = $('<div>').html(d).text();
+                select.append('<option value="'+d+'">'+d+'</option>');
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

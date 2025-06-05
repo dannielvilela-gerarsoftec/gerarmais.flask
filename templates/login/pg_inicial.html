@@ -1,0 +1,10 @@
+{% extends "base_login.html" %}
+
+{% block title %}Página Inicial{% endblock %}
+
+{% block content %}
+    <div class="text-center">
+        <h1 class="mt-4">Bem-vindo ao Sistema</h1>
+        <a href="{{ url_for('precifica_produtos') }}" class="btn btn-primary mt-3">Ir para Precificação de Produtos</a>
+    </div>
+{% endblock %}

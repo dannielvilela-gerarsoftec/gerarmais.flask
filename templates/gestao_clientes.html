@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Clientes</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Gestão de Clientes</h1>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Razão Social</th>
+                    <th>Nome Fantasia</th>
+                    <th>Ativa</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for empresa in empresas %}
+                <tr>
+                    <td>{{ empresa.dados_empresaID }}</td>
+                    <td>{{ empresa.razao_social }}</td>
+                    <td>{{ empresa.fantasia }}</td>
+                    <td>{{ 'Sim' if empresa.ativa else 'Não' }}</td>
+                    <td>
+                        {% if not empresa.ativa %}
+                            <a href="{{ url_for('aprovar_empresa', empresa_id=empresa.dados_empresaID) }}" class="btn btn-success">Ativar</a>
+                        {% else %}
+                            <a href="{{ url_for('rejeitar_empresa', empresa_id=empresa.dados_empresaID) }}" class="btn btn-danger">Desativar</a>
+                        {% endif %}
+                        <a href="{{ url_for('processar_pagamento', empresa_id=empresa.dados_empresaID) }}" class="btn btn-primary">Processar Pagamento</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

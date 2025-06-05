@@ -1,0 +1,69 @@
+{% extends "base_login.html" %}
+
+{% block title %}Lista de Produtos{% endblock %}
+
+{% block content %}
+    <div class="container mt-5">
+        <h1>Produtos</h1>
+        
+        <!-- Formulário para pesquisar produtos e escolher categorias -->
+        <form method="get" action="{{ url_for('lista_produtos.lista_produtos') }}" class="form-inline mb-3">
+            <!-- Campo para digitar palavras de pesquisa dos produtos -->
+            <input type="text" name="q" class="form-control mr-sm-2" placeholder="Pesquisar produto" value="{{ query_nome }}">
+            
+            <!-- Seleciona diferentes categorias de produtos para filtrar -->
+            <select name="categoria" class="form-control mr-sm-2">
+                <!-- Opção padrão para mostrar todas as categorias -->
+                <option value="">Todas as Categorias</option>
+                <!-- Lista cada uma das categorias disponíveis -->
+                {% for categoria in categorias %}
+                <option value="{{ categoria['categoriaID'] }}" {% if query_categoria == categoria['categoriaID'] %}selected{% endif %}>{{ categoria['categoria'] }}</option>
+                {% endfor %}
+            </select>
+            
+            <!-- Botão para enviar o formulário de pesquisa -->
+            <button class="btn btn-outline-success" type="submit">Filtrar</button>
+        </form>
+        
+        <!-- Verifica se há produtos para mostrar -->
+        {% if produtos %}
+        <!-- Tabela para mostrar a lista de produtos -->
+        <table class="table">
+            <thead>
+                <tr>
+                    <!-- Cabeçalho da tabela com nomes das colunas -->
+                    <th>Nome</th>
+                    <th>Categoria</th>
+                    <th>À Vista</th>
+                    <th>28 Dias</th>
+                    <th>28/56 Dias</th>
+                    <th>56 Dias</th>
+                    <th>84 Dias</th>
+                    <th>3x Cartão</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Mostra cada produto em uma linha da tabela -->
+                {% for produto in produtos %}
+                <tr>
+                    <!-- Coluna com o nome do produto como link para editar -->
+                    <td><a href="{{ url_for('editar_produto_bp.editar_produto', produtoID=produto['produtoID']) }}">{{ produto['produto_nome'] }}</a></td>
+                    <!-- Coluna com o nome da categoria -->
+                    <td>{{ produto['categoria'] }}</td>
+                    <!-- Preços calculados para cada condição de pagamento -->
+                    <td>{{ produto['price_avista'] | round(2) }}</td>
+                    <td>{{ produto['price_28'] | round(2) }}</td>
+                    <td>{{ produto['price_28_56'] | round(2) }}</td>
+                    <td>{{ produto['price_56'] | round(2) }}</td>
+                    <td>{{ produto['price_84'] | round(2) }}</td>
+                    <td>{{ produto['price_card_3x'] | round(2) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <!-- Mensagem caso nenhum produto seja encontrado -->
+        <div class="alert alert-info">Nenhum produto encontrado.</div>
+        {% endif %}
+    </div>
+{% endblock %}

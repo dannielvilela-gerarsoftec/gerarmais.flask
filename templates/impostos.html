@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Impostos</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Impostos</h2>
+        <!-- Aba Impostos -->
+        <div class="tab-pane fade" id="impostos" role="tabpanel" aria-labelledby="impostos-tab">
+            <form action="{{ url_for('impostos_bp.impostos') }}" method="POST" class="mt-3">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Categoria</th>
+                            <th>PIS (%)</th>
+                            <th>COFINS (%)</th>
+                            <th>IRPJ (%)</th>
+                            <th>CSLL (%)</th>
+                            <th>ICMS (%)</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for imposto in impostos %}
+                        <tr>
+                            <td>{{ imposto['categoria'] }}</td>
+                            <td><input type="number" class="form-control" name="pis" step="0.01" value="{{ (imposto['pis'] * 100) if imposto.pis is not none else '' }}" required></td>
+                            <td><input type="number" class="form-control" name="cofins" step="0.01" value="{{ (imposto['cofins'] * 100) if imposto.cofins is not none else '' }}" required></td>
+                            <td><input type="number" class="form-control" name="irpj" step="0.01" value="{{ (imposto['irpj'] * 100) if imposto.irpj is not none else '' }}" required></td>
+                            <td><input type="number" class="form-control" name="csll" step="0.01" value="{{ (imposto['csll'] * 100) if imposto.csll is not none else '' }}" required></td>
+                            <td><input type="number" class="form-control" name="icms" step="0.01" value="{{ (imposto['icms'] * 100) if imposto.icms is not none else '' }}" required></td>
+                            <td>
+                                <input type="hidden" name="categoria_id" value="{{ imposto['categoriaID'] }}">
+                                <button type="submit" class="btn btn-primary">Salvar</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+        </div>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        </form>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.9/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
