@@ -1,69 +1,146 @@
 {% extends "base_login.html" %}
-
 {% block title %}Lista de Produtos{% endblock %}
 
 {% block content %}
-    <div class="container mt-5">
-        <h1>Produtos</h1>
-        
-        <!-- Formulário para pesquisar produtos e escolher categorias -->
-        <form method="get" action="{{ url_for('lista_produtos.lista_produtos') }}" class="form-inline mb-3">
-            <!-- Campo para digitar palavras de pesquisa dos produtos -->
-            <input type="text" name="q" class="form-control mr-sm-2" placeholder="Pesquisar produto" value="{{ query_nome }}">
-            
-            <!-- Seleciona diferentes categorias de produtos para filtrar -->
-            <select name="categoria" class="form-control mr-sm-2">
-                <!-- Opção padrão para mostrar todas as categorias -->
-                <option value="">Todas as Categorias</option>
-                <!-- Lista cada uma das categorias disponíveis -->
-                {% for categoria in categorias %}
-                <option value="{{ categoria['categoriaID'] }}" {% if query_categoria == categoria['categoriaID'] %}selected{% endif %}>{{ categoria['categoria'] }}</option>
-                {% endfor %}
-            </select>
-            
-            <!-- Botão para enviar o formulário de pesquisa -->
-            <button class="btn btn-outline-success" type="submit">Filtrar</button>
-        </form>
-        
-        <!-- Verifica se há produtos para mostrar -->
-        {% if produtos %}
-        <!-- Tabela para mostrar a lista de produtos -->
-        <table class="table">
-            <thead>
-                <tr>
-                    <!-- Cabeçalho da tabela com nomes das colunas -->
-                    <th>Nome</th>
-                    <th>Categoria</th>
-                    <th>À Vista</th>
-                    <th>28 Dias</th>
-                    <th>28/56 Dias</th>
-                    <th>56 Dias</th>
-                    <th>84 Dias</th>
-                    <th>3x Cartão</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Mostra cada produto em uma linha da tabela -->
-                {% for produto in produtos %}
-                <tr>
-                    <!-- Coluna com o nome do produto como link para editar -->
-                    <td><a href="{{ url_for('editar_produto_bp.editar_produto', produtoID=produto['produtoID']) }}">{{ produto['produto_nome'] }}</a></td>
-                    <!-- Coluna com o nome da categoria -->
-                    <td>{{ produto['categoria'] }}</td>
-                    <!-- Preços calculados para cada condição de pagamento -->
-                    <td>{{ produto['price_avista'] | round(2) }}</td>
-                    <td>{{ produto['price_28'] | round(2) }}</td>
-                    <td>{{ produto['price_28_56'] | round(2) }}</td>
-                    <td>{{ produto['price_56'] | round(2) }}</td>
-                    <td>{{ produto['price_84'] | round(2) }}</td>
-                    <td>{{ produto['price_card_3x'] | round(2) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <!-- Mensagem caso nenhum produto seja encontrado -->
-        <div class="alert alert-info">Nenhum produto encontrado.</div>
-        {% endif %}
-    </div>
+<!-- Breadcrumb + Botão Visualizar -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb bg-body-tertiary border rounded-3 px-3 py-2 d-flex align-items-center">
+    <li class="breadcrumb-item">
+      <a class="text-decoration-none" href="{{ url_for('pg_inicial') }}">Início</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">
+      Lista de Produto
+    </li>
+    <li class="ms-auto">
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-primary btn-sm" onclick="abrirRelatorio()">Visualizar Tabela</button>
+
+      </div>
+    </li>
+  </ol>
+</nav>
+
+<!-- Filtros -->
+<div id="filtros-container" class="row mb-3">
+  <div class="col-md-3">
+    <input type="text" id="filtro-nome" class="form-control" placeholder="Pesquisar por nome, fornecedor, etc.">
+  </div>
+  <div class="col-md-3">
+    <select id="filtro-categoria" class="form-select">
+      <option value="">Todas as Categorias</option>
+      {% for categoria in categorias %}
+      <option value="{{ categoria['categoriaID'] }}">{{ categoria['categoria'] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <select id="filtro-preco" class="form-select">
+      <option value="de">Dentro - Sem Frete</option>
+      <option value="de_fr">Dentro - Com Frete</option>
+      <option value="fe">Fora - Sem Frete</option>
+      <option value="fe_fr">Fora - Com Frete</option>
+    </select>
+  </div>
+  <div class="col-md-3">
+    <button class="btn btn-success w-100" id="btn-filtrar">Filtrar</button>
+  </div>
+</div>
+
+<!-- Tabela principal -->
+<div class="table-responsive" style="overflow-x: auto;">
+  <table class="table table-striped text-nowrap" id="tabela-produtos">
+    <thead>
+      <tr>
+        <th>Produto</th>
+        <th>Preço (R$)</th>
+        <th>Unidade</th>
+        <th>Peso (kg)</th>
+        <th>Validade</th>
+        <th>Categoria</th>
+        <th>Fornecedor</th>
+        <th>Descrição</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Bloco de visualização de relatório -->
+<div id="relatorio-container" class="d-none mt-5">
+  <div class="text-center mb-3">
+    <h4 id="relatorio-titulo">Lista de Produtos - </h4>
+    <button class="btn btn-danger btn-sm" onclick="salvarPDF()">Salvar em PDF</button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-bordered text-nowrap" id="tabela-relatorio">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th>Preço (R$)</th>
+          <th>Unidade</th>
+          <th>Peso (kg)</th>
+          <th>Validade</th>
+          <th>Categoria</th>
+          <th>Fornecedor</th>
+          <th>Descrição</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="{{ url_for('static', filename='js/lista_produtos.js') }}"></script>
+
+<script>
+function salvarPDF() {
+  const container = document.getElementById("relatorio-container");
+  html2canvas(container, {
+    scale: 2,
+    scrollY: -window.scrollY
+  }).then(canvas => {
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jspdf.jsPDF('l', 'pt', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const ratio = pageWidth / canvas.width;
+    const height = canvas.height * ratio;
+    pdf.addImage(imgData, 'PNG', 40, 40, pageWidth - 80, height);
+    pdf.save("lista_produtos.pdf");
+  });
+}
+
+document.getElementById('btn-visualizar-relatorio').addEventListener('click', function () {
+  const titulo = document.getElementById("relatorio-titulo");
+  const now = new Date();
+  const dataHora = now.toLocaleString('pt-BR');
+  titulo.textContent = "Lista de Produtos - " + dataHora;
+
+  const tabelaPrincipal = document.querySelectorAll("#tabela-produtos tbody tr");
+  const corpoRelatorio = document.querySelector("#tabela-relatorio tbody");
+  corpoRelatorio.innerHTML = "";
+
+  tabelaPrincipal.forEach(row => {
+    const clone = row.cloneNode(true);
+    corpoRelatorio.appendChild(clone);
+  });
+
+  document.getElementById("relatorio-container").classList.remove("d-none");
+});
+</script>
+
+<style>
+  table td, table th {
+    white-space: nowrap !important;
+  }
+  .container {
+    margin-bottom: 140px;
+  }
+  body {
+    overflow-x: auto;
+  }
+</style>
 {% endblock %}
