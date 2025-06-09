@@ -1,8 +1,18 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from conexao import get_db_connection
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from blueprints.cadastros.cadastro_produto import get_ptax_dia_anterior
 
 editar_produto_bp = Blueprint('editar_produto_bp', __name__)
+
+def sanitize_decimal(value):
+    if not value:
+        return None
+    try:
+        value = value.replace(',', '.').strip()
+        return Decimal(value)
+    except InvalidOperation:
+        return None
 
 def obter_parametros(categoriaID):
     conn = get_db_connection()
@@ -52,10 +62,18 @@ def editar_produto(produtoID):
 
     cursor.execute("SELECT * FROM tipo")
     tipos = cursor.fetchall()
-    cursor.execute("SELECT * FROM categoria")
+    cursor.execute("SELECT * FROM categoria WHERE categoria_tipoID = %s", (produto['produto_tipoID'],))
     categorias = cursor.fetchall()
     cursor.execute("SELECT * FROM unidades")
     unidades = cursor.fetchall()
+
+    ptax_valor = Decimal(str(get_ptax_dia_anterior()))
+    ptax_data = None
+
+    if produto['produto_custo_moeda'] == 'U' and produto['produto_custo_dolar']:
+        produto['produto_custo_convertido'] = round(Decimal(produto['produto_custo_dolar']) * Decimal(ptax_valor), 4)
+    else:
+        produto['produto_custo_convertido'] = produto['produto_custo']
 
     parametros = obter_parametros(produto['produto_categoriaID'])
     frete_ton = Decimal(parametros.get('frete', 0))
@@ -75,40 +93,57 @@ def editar_produto(produtoID):
     frete = (frete_ton / 1000) * peso
     producao = (producao_ton / 1000) * peso
 
-    def prec(tipo, usa_frete, usa_icms):
+    def prec(usa_frete, usa_icms):
         return calcular_precificacao(
             custo, frete if usa_frete else 0, producao, lucro_pct, outros_pct,
             pis, cofins, irpj, csll, icms if usa_icms else icms_fe
         )
 
     precs = {
-        'de': prec('de', False, True),
-        'de_fr': prec('de_fr', True, True),
-        'fe': prec('fe', False, False),
-        'fe_fr': prec('fe_fr', True, False),
+        'de': prec(False, True),
+        'de_fr': prec(True, True),
+        'fe': prec(False, False),
+        'fe_fr': prec(True, False),
     }
 
     if request.method == 'POST':
         form = request.form
+
+        produto_nome = form['produto_nome'].strip().upper()
+        produto_tipoID = form['produto_tipoID']
+        produto_categoriaID = form.get('produto_categoriaID')
+        if not produto_categoriaID:
+            flash("Erro: Categoria do produto não foi selecionada.", "danger")
+            return redirect(request.url)
+
+        produto_descricao = form.get('produto_descricao', '').strip().upper()
+        produto_peso = Decimal(form.get('produto_peso', 0))
+        produto_validade = form['produto_validade']
+        produto_unidadeID = form['produto_unidadeID']
+        produto_custo = sanitize_decimal(form.get('produto_custo'))
+        produto_custo_moeda = form.get('produto_custo_moeda', 'R')
+        produto_custo_dolar = None
+        produto_fornecedor = form.get('produto_fornecedor', '').strip().upper()
+
+        if produto_custo_moeda == 'U':
+            ptax = get_ptax_dia_anterior()
+            produto_custo_dolar = produto_custo
+            produto_custo = round(produto_custo_dolar * Decimal(str(ptax)), 4)
+
         update_query = """
             UPDATE produtos SET 
                 produto_nome=%s, produto_tipoID=%s, produto_categoriaID=%s,
                 produto_descricao=%s, produto_peso=%s, produto_validade=%s,
-                produto_unidadeID=%s, produto_custo=%s, produto_fornecedor=%s,
+                produto_unidadeID=%s, produto_custo=%s, produto_custo_moeda=%s,
+                produto_custo_dolar=%s, produto_fornecedor=%s,
                 produto_venda_de=%s, produto_venda_de_fr=%s,
                 produto_venda_fe=%s, produto_venda_fe_fr=%s
             WHERE produtoID = %s
         """
         cursor.execute(update_query, (
-            form['produto_nome'].upper(),
-            form['produto_tipoID'],
-            form['produto_categoriaID'],
-            form['produto_descricao'].upper() if form.get('produto_descricao') else '',
-            Decimal(form.get('produto_peso') or 0),
-            int(form.get('produto_validade') or 0),
-            form['produto_unidadeID'],
-            Decimal(form.get('produto_custo') or 0),
-            form['produto_fornecedor'].upper() if form.get('produto_fornecedor') else '',
+            produto_nome, produto_tipoID, produto_categoriaID, produto_descricao,
+            produto_peso, produto_validade, produto_unidadeID, produto_custo,
+            produto_custo_moeda, produto_custo_dolar, produto_fornecedor,
             Decimal(form.get('preco_venda_de') or 0),
             Decimal(form.get('preco_venda_de_fr') or 0),
             Decimal(form.get('preco_venda_fe') or 0),
@@ -160,7 +195,10 @@ def editar_produto(produtoID):
         lucro_liquido_percent_fe=precs['fe'][3], custo_total_fe=precs['fe'][4], outros_custos_r_fe=precs['fe'][5],
         pv_fe_fr=precs['fe_fr'][0], lucro_liquido_fe_fr=precs['fe_fr'][1], total_impostos_fe_fr=precs['fe_fr'][2],
         lucro_liquido_percent_fe_fr=precs['fe_fr'][3], custo_total_fe_fr=precs['fe_fr'][4], outros_custos_r_fe_fr=precs['fe_fr'][5],
-        tabela_pagamentos=tabela_pagamentos
+        tabela_pagamentos=tabela_pagamentos,
+        ptax=ptax_valor,
+        ptax_data=ptax_data,
+        clonar=False
     )
 
 @editar_produto_bp.route('/clonar_produto/<int:produtoID>')
@@ -174,7 +212,7 @@ def clonar_produto_view(produtoID):
 
     cursor.execute("SELECT * FROM tipo")
     tipos = cursor.fetchall()
-    cursor.execute("SELECT * FROM categoria")
+    cursor.execute("SELECT * FROM categoria WHERE categoria_tipoID = %s", (produto['produto_tipoID'],))
     categorias = cursor.fetchall()
     cursor.execute("SELECT * FROM unidades")
     unidades = cursor.fetchall()
@@ -210,8 +248,6 @@ def categorias_por_tipo(tipo_id):
     categorias = cursor.fetchall()
     cursor.close()
     conn.close()
-    print("TIPO ID RECEBIDO:", tipo_id)
-    print("CATEGORIAS RETORNADAS:", categorias)
 
     return jsonify([
         {'id': c['categoriaID'], 'nome': c['categoria']} for c in categorias

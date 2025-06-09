@@ -1,54 +1,54 @@
-<aside id="sidebar" class="bg-dark text-white d-flex flex-column vh-100 position-sticky" style="width: 250px;">
-  <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
-    <span class="fw-semibold menu-label">Gerar+</span>
-    <button id="sidebarToggle" class="btn btn-sm btn-outline-light" title="Recolher menu">
-      <i class="bi bi-chevron-left"></i>
-    </button>
+<aside id="sidebar" class="bg-dark text-white d-flex flex-column position-fixed h-100" style="width: 250px; z-index: 1030;">
+  <!-- Cabeçalho do Menu -->
+  <div class="d-flex flex-column align-items-center p-3 border-bottom">
+      <img src="{{ url_for('static', filename='img/logo_gerarsoftec.png') }}" class="logo-placeholder mt-2 mb-2 bg-secondary" style="width:100%; height: 80px; border-radius: 8px;" alt="Logo">
   </div>
 
-  <ul class="nav nav-pills flex-column px-2 mt-3" id="menu-items">
-    <!-- Grupo: Produtos -->
+  <!-- Itens do Menu -->
+  <ul class="nav nav-pills flex-column px-2 pt-2 overflow-auto" id="menu-items">
+
+    <!-- Produtos -->
     <li class="nav-item">
-      <a href="#" role="button" class="nav-link text-white d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="right" title="Produtos">
+      <a href="#submenu-produtos" data-bs-toggle="collapse" class="nav-link text-white d-flex align-items-center collapsed">
         <i class="bi bi-box fs-5"></i>
         <span class="menu-label ms-2">Produtos</span>
       </a>
-      <ul class="nav flex-column submenu ps-4">
-        <li><a href="{{ url_for('lista_produtos.lista_produtos') }}" class="nav-link text-white small"><i class="bi bi-list me-2"></i> Lista de Produtos</a></li>
+      <ul class="collapse nav flex-column submenu ps-4" id="submenu-produtos" data-bs-parent="#menu-items">
+        <li><a href="{{ url_for('lista_produtos.lista_produtos') }}" class="nav-link text-white small"><i class="bi bi-list me-2"></i> Lista</a></li>
         <li><a href="{{ url_for('cadastro_produto_bp.cadastro_produto') }}" class="nav-link text-white small"><i class="bi bi-plus-circle me-2"></i> Cadastrar</a></li>
       </ul>
     </li>
 
-    <!-- Grupo: Formulações -->
+    <!-- Formulações -->
     <li class="nav-item mt-2">
-      <a href="#" role="button" class="nav-link text-white d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="right" title="Formulações">
+      <a href="#submenu-formulacoes" data-bs-toggle="collapse" class="nav-link text-white d-flex align-items-center collapsed">
         <i class="bi bi-bezier fs-5"></i>
         <span class="menu-label ms-2">Formulações</span>
       </a>
-      <ul class="nav flex-column submenu ps-4">
+      <ul class="collapse nav flex-column submenu ps-4" id="submenu-formulacoes" data-bs-parent="#menu-items">
         <li><a href="{{ url_for('lista_formulacoes_bp.lista_formulacoes') }}" class="nav-link text-white small"><i class="bi bi-list me-2"></i> Lista</a></li>
         <li><a href="{{ url_for('ingredientes_bp.lista_ingredientes') }}" class="nav-link text-white small"><i class="bi bi-list-check me-2"></i> Ingredientes</a></li>
       </ul>
     </li>
 
-    <!-- Grupo: Relatórios -->
+    <!-- Relatórios -->
     <li class="nav-item mt-2">
-      <a href="#" role="button" class="nav-link text-white d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatórios">
+      <a href="#submenu-relatorios" data-bs-toggle="collapse" class="nav-link text-white d-flex align-items-center collapsed">
         <i class="bi bi-graph-up fs-5"></i>
         <span class="menu-label ms-2">Relatórios</span>
       </a>
-      <ul class="nav flex-column submenu ps-4">
+      <ul class="collapse nav flex-column submenu ps-4" id="submenu-relatorios" data-bs-parent="#menu-items">
         <li><a href="{{ url_for('tabela_precos_bp.tabela_precos') }}" class="nav-link text-white small"><i class="bi bi-table me-2"></i> Tabela de Preços</a></li>
       </ul>
     </li>
 
-    <!-- Grupo: Configurações -->
+    <!-- Configurações -->
     <li class="nav-item mt-2">
-      <a href="#" role="button" class="nav-link text-white d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="right" title="Configurações">
+      <a href="#submenu-configuracoes" data-bs-toggle="collapse" class="nav-link text-white d-flex align-items-center collapsed">
         <i class="bi bi-gear fs-5"></i>
         <span class="menu-label ms-2">Configurações</span>
       </a>
-      <ul class="nav flex-column submenu ps-4">
+      <ul class="collapse nav flex-column submenu ps-4" id="submenu-configuracoes" data-bs-parent="#menu-items">
         <li><a href="{{ url_for('parametros_bp.parametros') }}" class="nav-link text-white small"><i class="bi bi-sliders me-2"></i> Parâmetros</a></li>
         <li><a href="#" class="nav-link text-white small"><i class="bi bi-person-plus me-2"></i> Novo Usuário</a></li>
         <li><a href="#" class="nav-link text-white small"><i class="bi bi-credit-card me-2"></i> Área Pagamento</a></li>
@@ -63,6 +63,20 @@
       </a>
     </li>
   </ul>
+
+  <!-- Perfil com Dropdown -->
+  <div class="dropdown mt-auto p-3 border-top">
+    <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+      <img src="https://github.com/mdo.png" alt="Avatar" width="30" height="30" class="rounded-circle me-2" />
+      <span class="menu-label">Usuário</span>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userDropdown">
+      <li><a class="dropdown-item" href="#">Perfil</a></li>
+      <li><a class="dropdown-item" href="#">Configurações</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item" href="#">Logout</a></li>
+    </ul>
+  </div>
 </aside>
 
 <script>
@@ -70,13 +84,12 @@
     const toggleBtn = document.getElementById('sidebarToggle');
     const wrapper = document.getElementById('wrapper');
 
-    toggleBtn?.addEventListener('click', function () {
+    toggleBtn?.addEventListener('click', () => {
       wrapper.classList.toggle('sidebar-collapsed');
     });
 
-    const tooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltips.map(function (el) {
-      return new bootstrap.Tooltip(el);
-    });
+    // Tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
   });
 </script>

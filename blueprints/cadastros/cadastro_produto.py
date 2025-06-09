@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for
 from conexao import get_db_connection
 from decimal import Decimal, InvalidOperation
 import requests
+import os
+import json
 from datetime import datetime, timedelta
 
 cadastro_produto_bp = Blueprint('cadastro_produto_bp', __name__)
@@ -16,7 +18,20 @@ def sanitize_decimal(value):
         return None
 
 def get_ptax_dia_anterior():
-    hoje = datetime.now()
+    cache_file = "ptax_cache.json"
+    hoje = datetime.now().date()
+
+    # Verifica cache local
+    if os.path.exists(cache_file):
+        with open(cache_file, 'r') as f:
+            try:
+                data = json.load(f)
+                if data.get("data") == str(hoje) and data.get("valor"):
+                    return float(data["valor"])
+            except Exception:
+                pass  # Se erro ao ler JSON, ignora e refaz
+
+    # Busca nova cotação (últimos 7 dias úteis)
     for dias in range(1, 8):
         dia = hoje - timedelta(days=dias)
         data_api = dia.strftime('%m-%d-%Y')
@@ -29,9 +44,18 @@ def get_ptax_dia_anterior():
             r = requests.get(url, timeout=5)
             cotacao = r.json()
             if cotacao['value']:
-                return float(cotacao['value'][0]['cotacaoVenda'])
+                ptax = float(cotacao['value'][0]['cotacaoVenda'])
+
+                # Salva no cache
+                with open(cache_file, 'w') as f:
+                    json.dump({
+                        "data": str(hoje),
+                        "valor": ptax
+                    }, f)
+                return ptax
         except Exception:
             continue
+
     raise Exception("Não foi possível obter a cotação do dólar.")
 
 @cadastro_produto_bp.route('/cadastro_produto', methods=['GET', 'POST'])
@@ -39,7 +63,6 @@ def cadastro_produto():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # Preenche os selects independentemente do método
     cursor.execute("SELECT * FROM tipo")
     tipos = cursor.fetchall()
     cursor.execute("SELECT * FROM categoria")
@@ -47,10 +70,10 @@ def cadastro_produto():
     cursor.execute("SELECT * FROM unidades")
     unidades = cursor.fetchall()
 
-    produto = None  # usado para repopular campos em caso de erro
+    produto = None
 
     if request.method == 'POST':
-        produto = request.form.to_dict()  # Captura os dados preenchidos para repopular
+        produto = request.form.to_dict()
 
         try:
             produto_nome = request.form['produto_nome'].strip().upper() or None
@@ -61,7 +84,9 @@ def cadastro_produto():
             produto_validade = request.form['produto_validade'].strip() or None
             produto_unidadeID = request.form['produto_unidadeID'].strip() or None
             produto_custo = sanitize_decimal(request.form.get('produto_custo', '0'))
+            produto_custo_moeda = request.form.get('produto_custo_moeda', 'R')
             produto_fornecedor = request.form['produto_fornecedor'].strip().upper() or None
+            produto_custo_dolar = None
 
             if not all([produto_nome, produto_tipoID, produto_categoriaID, produto_unidadeID]):
                 flash("Preencha todos os campos obrigatórios.", "danger")
@@ -71,15 +96,22 @@ def cadastro_produto():
                 flash("Peso e custo devem ser valores numéricos.", "danger")
                 raise ValueError("Peso ou custo inválido.")
 
+            if produto_custo_moeda == 'U':
+                ptax = get_ptax_dia_anterior()
+                produto_custo_dolar = produto_custo
+                produto_custo = round(produto_custo_dolar * Decimal(str(ptax)), 4)
+
             insert_query = """
                 INSERT INTO produtos 
                 (produto_nome, produto_tipoID, produto_categoriaID, produto_descricao, produto_peso, produto_validade,
-                 produto_unidadeID, produto_custo, produto_fornecedor)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 produto_unidadeID, produto_custo, produto_custo_moeda, produto_custo_dolar, produto_fornecedor)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(insert_query, (
                 produto_nome, produto_tipoID, produto_categoriaID, produto_descricao,
-                produto_peso, produto_validade, produto_unidadeID, produto_custo, produto_fornecedor
+                produto_peso, produto_validade, produto_unidadeID,
+                produto_custo, produto_custo_moeda, produto_custo_dolar,
+                produto_fornecedor
             ))
             conn.commit()
             produto_id = cursor.lastrowid
@@ -94,10 +126,9 @@ def cadastro_produto():
                 produto_id=produto_id
             )
 
-
         except Exception as e:
-            # Já mostramos o flash acima quando necessário
-            print("Erro ao salvar:", str(e))  # Útil no log/terminal
+            flash("Erro ao salvar produto: " + str(e), "danger")
+            print("Erro ao salvar:", str(e))
 
     cursor.close()
     conn.close()
