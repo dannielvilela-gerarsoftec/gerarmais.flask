@@ -4,200 +4,229 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2>Parâmetros</h2>
-    <ul class="nav nav-tabs" id="myTab" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="custos-tab" data-bs-toggle="tab" data-bs-target="#custos" type="button" role="tab" aria-controls="custos" aria-selected="true">Custos</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="impostos-tab" data-bs-toggle="tab" data-bs-target="#impostos" type="button" role="tab" aria-controls="impostos" aria-selected="false">Impostos</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tipos-tab" data-bs-toggle="tab" data-bs-target="#tipos" type="button" role="tab" aria-controls="tipos" aria-selected="false">Tipos</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias" type="button" role="tab" aria-controls="categorias" aria-selected="false">Categorias</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="unidades-tab" data-bs-toggle="tab" data-bs-target="#unidades" type="button" role="tab" aria-controls="unidades" aria-selected="false">Unidades</button>
-        </li>
-    </ul>
+  <h2>Parâmetros</h2>
 
-    <div class="tab-content" id="myTabContent">
-        <!-- Aba Custos -->
-        <div class="tab-pane fade show active" id="custos" role="tabpanel" aria-labelledby="custos-tab">
-            <form action="{{ url_for('parametros_bp.parametros') }}" method="POST">
-                <table class="table table-bordered mt-3">
-                    <thead>
-                        <tr>
-                            <th>Categoria</th>
-                            <th>Produção (R$/TN)</th>
-                            <th>Frete (R$/TN)</th>
-                            <th>Outros Custos (%)</th>
-                            <th>Lucro Desejado (%)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Linha do Custo de Oportunidade -->
-                        <tr>
-                            <td><b>Custo de Oportunidade</b></td>
-                            <td colspan="4">
-                                <input type="number" class="form-control" name="custo_oportunidade" step="0.01" value="{{ (custo_oportunidade * 100) if custo_oportunidade else '' }}">
-                                <small>Este valor será aplicado em todas as linhas/categorias</small>
-                            </td>
-                        </tr>
-                        <!-- Linha do Juros Diário -->
-                        <tr>
-                            <td><b>Juros Diário</b></td>
-                            <td colspan="4">
-                                <input type="number" class="form-control" name="juros_diario" step="0.01" value="{{ (juros_diario * 100) if juros_diario else '' }}">
-                                <small>Este valor será aplicado em todas as linhas/categorias</small>
-                            </td>
-                        </tr>
-                        <!-- Linhas de cada categoria -->
-                        {% for categoria in categorias %}
-                        <tr>
-                            <td>{{ categoria['categoria'] }}</td>
-                            <td><input type="number" class="form-control" name="producao_{{ categoria['categoriaID'] }}" step="0.01" value="{{ categoria['producao'] or '' }}"></td>
-                            <td><input type="number" class="form-control" name="frete_{{ categoria['categoriaID'] }}" step="0.01" value="{{ categoria['frete'] or '' }}"></td>
-                            <td><input type="number" class="form-control" name="outros_custos_{{ categoria['categoriaID'] }}" step="0.01" value="{{ (categoria['outros_custos'] * 100) if categoria['outros_custos'] is not none else '' }}"></td>
-                            <td><input type="number" class="form-control" name="lucro_desejado_{{ categoria['categoriaID'] }}" step="0.01" value="{{ (categoria['lucro_desejado'] * 100) if categoria['lucro_desejado'] else '' }}"></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <button type="submit" class="btn btn-primary">Salvar</button>
-            </form>
+  <!-- Navegação -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb bg-body-tertiary border rounded-3 px-3 py-2 d-flex align-items-center">
+      <li class="breadcrumb-item">
+        <a class="text-decoration-none" href="{{ url_for('pg_inicial') }}">Início</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Parâmetros</li>
+    </ol>
+  </nav>
+
+  <!-- Abas -->
+  <ul class="nav nav-tabs" id="myTab" role="tablist">
+    {% for tab in ['Custos', 'Impostos', 'Tipos', 'Categorias', 'Unidades'] %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {% if loop.index0 == 0 %}active{% endif %}" id="{{ tab|lower }}-tab" data-bs-toggle="tab"
+        data-bs-target="#{{ tab|lower }}" type="button" role="tab" aria-controls="{{ tab|lower }}"
+        aria-selected="{{ 'true' if loop.index0 == 0 else 'false' }}">{{ tab }}</button>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <!-- Conteúdo das Abas -->
+  <div class="tab-content" id="myTabContent">
+
+    <!-- Aba Custos -->
+    <div class="tab-pane fade show active" id="custos" role="tabpanel" aria-labelledby="custos-tab">
+      <form method="POST" action="{{ url_for('parametros_bp.parametros') }}">
+        <input type="hidden" name="aba" value="custos">
+
+        <div class="d-flex justify-content-end mt-3 mb-2">
+          <button type="submit" class="btn btn-success btn-sm">Salvar</button>
         </div>
 
-        <!-- Aba Impostos -->
-        <div class="tab-pane fade" id="impostos" role="tabpanel" aria-labelledby="impostos-tab">
-            <form action="{{ url_for('parametros_bp.parametros') }}" method="POST" class="mt-3">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Categoria</th>
-                            <th>PIS (%)</th>
-                            <th>COFINS (%)</th>
-                            <th>IRPJ (%)</th>
-                            <th>CSLL (%)</th>
-                            <th>ICMS (%)</th>
-                            <th>ICMS - FE (%)</th>
-                            <th>Ação</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for imposto in impostos %}
-                        <tr>
-                            <td>{{ imposto['categoria'] }}</td>
-                            <td><input type="number" class="form-control" name="pis_{{ imposto['categoriaID'] }}" step="0.01" value="{{ (imposto['pis'] * 100) if imposto['pis'] is not none else '' }}"></td>
-                            <td><input type="number" class="form-control" name="cofins_{{ imposto['categoriaID'] }}" step="0.01" value="{{ (imposto['cofins'] * 100) if imposto['cofins'] is not none else '' }}"></td>
-                            <td><input type="number" class="form-control" name="irpj_{{ imposto['categoriaID'] }}" step="0.01" value="{{ (imposto['irpj'] * 100) if imposto['irpj'] is not none else '' }}"></td>
-                            <td><input type="number" class="form-control" name="csll_{{ imposto['categoriaID'] }}" step="0.01" value="{{ (imposto['csll'] * 100) if imposto['csll'] is not none else '' }}"></td>
-                            <td><input type="number" class="form-control" name="icms_{{ imposto['categoriaID'] }}" step="0.01" value="{{ (imposto['icms'] * 100) if imposto['icms'] is not none else '' }}"></td>
-                            <td><input type="number" class="form-control" name="icms_fe_{{ imposto['categoriaID'] }}" step="0.01" value="{{ (imposto['icms_fe'] * 100) if imposto['icms_fe'] is not none else '' }}"></td>
-                            <td>
-                                <button type="submit" class="btn btn-primary">Salvar</button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </form>
-        </div>
-
-        <!-- Aba Tipos -->
-        <div class="tab-pane fade" id="tipos" role="tabpanel" aria-labelledby="tipos-tab">
-            <form method="POST" class="mt-3" action="{{ url_for('tipos_bp.adicionar_tipo') }}">
-                <div class="form-group">
-                    <label for="tipo">Novo Tipo</label>
-                    <input type="text" class="form-control" id="tipo" name="tipo">
-                </div>
-                <button type="submit" class="btn btn-primary">Adicionar Tipo</button>
-            </form>
-            <table class="table table-striped mt-4">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Tipo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for tipo in tipos %}
-                        <tr>
-                            <td>{{ tipo['tipoID'] }}</td>
-                            <td>{{ tipo['tipo'] }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Aba Categorias -->
-        <div class="tab-pane fade" id="categorias" role="tabpanel" aria-labelledby="categorias-tab">
-            <form method="POST" class="mt-3" action="{{ url_for('categorias_bp.adicionar_categoria') }}">
-                <div class="form-group">
-                    <label for="categoria">Nova Categoria</label>
-                    <input type="text" class="form-control" id="categoria" name="categoria">
-                </div>
-                <div class="form-group">
-                    <label for="tipo_categoria">Tipo Relacionado</label>
-                    <select class="form-control" id="tipo_categoria" name="tipo_categoria">
-                        {% for tipo in tipos %}
-                        <option value="{{ tipo['tipoID'] }}">{{ tipo['tipo'] }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">Adicionar Categoria</button>
-            </form>
-            <table class="table table-striped mt-4">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Categoria</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for categoria in categorias %}
-                        <tr>
-                            <td>{{ categoria['categoriaID'] }}</td>
-                            <td>{{ categoria['categoria'] }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Aba Unidades -->
-        <div class="tab-pane fade" id="unidades" role="tabpanel" aria-labelledby="unidades-tab">
-            <form method="POST" class="mt-3" action="{{ url_for('unidades_bp.adicionar_unidade') }}">
-                <div class="form-group">
-                    <label for="unidade">Nova Unidade</label>
-                    <input type="text" class="form-control" id="unidade" name="unidade">
-                    <label for="unidade_desc">Descrição</label>
-                    <input type="text" class="form-control" id="unidade_desc" name="unidade_desc">
-                </div>
-                <button type="submit" class="btn btn-primary">Adicionar Unidade</button>
-            </form>
-            <table class="table table-striped mt-4">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Unidade</th>
-                        <th>Descrição</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for unidade in unidades %}
-                        <tr>
-                            <td>{{ unidade['unidadeID'] }}</td>
-                            <td>{{ unidade['unidade'] }}</td>
-                            <td>{{ unidade['unidade_desc'] }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th>Produção (R$/TN)</th>
+              <th>Frete (R$/TN)</th>
+              <th>Outros Custos (%)</th>
+              <th>Lucro Desejado (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Custo de Oportunidade</b></td>
+              <td colspan="4">
+                <input type="number" class="form-control" name="custo_oportunidade" step="0.01"
+                  value="{{ (custo_oportunidade * 100) if custo_oportunidade else '' }}">
+              </td>
+            </tr>
+            <tr>
+              <td><b>Juros Diário</b></td>
+              <td colspan="4">
+                <input type="number" class="form-control" name="juros_diario" step="0.01"
+                  value="{{ (juros_diario * 100) if juros_diario else '' }}">
+              </td>
+            </tr>
+            {% for categoria in categorias %}
+            <tr>
+              <td>{{ categoria['categoria'] }}</td>
+              <td><input type="number" class="form-control" name="producao_{{ categoria.categoriaID }}" step="0.01" value="{{ categoria.producao or '' }}"></td>
+              <td><input type="number" class="form-control" name="frete_{{ categoria.categoriaID }}" step="0.01" value="{{ categoria.frete or '' }}"></td>
+              <td><input type="number" class="form-control" name="outros_custos_{{ categoria.categoriaID }}" step="0.01" value="{{ (categoria.outros_custos * 100) if categoria.outros_custos is not none else '' }}"></td>
+              <td><input type="number" class="form-control" name="lucro_desejado_{{ categoria.categoriaID }}" step="0.01" value="{{ (categoria.lucro_desejado * 100) if categoria.lucro_desejado else '' }}"></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </form>
     </div>
+
+    <!-- Aba Impostos -->
+    <div class="tab-pane fade" id="impostos" role="tabpanel" aria-labelledby="impostos-tab">
+      <form method="POST" action="{{ url_for('parametros_bp.parametros') }}">
+        <input type="hidden" name="aba" value="impostos">
+
+        <div class="d-flex justify-content-end mt-3 mb-2">
+          <button type="submit" class="btn btn-success btn-sm">Salvar</button>
+        </div>
+
+        <h5>Valor Impostos (Referência Padrão)</h5>
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>PIS</th><th>COFINS</th><th>IRPJ</th><th>CSLL</th><th>ICMS</th><th>ICMS-FE R1</th><th>ICMS-FE R2</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              {% for campo in ['pis', 'cofins', 'irpj', 'csll', 'icms', 'icms_fe', 'icms_fe_2'] %}
+              <td>
+                <input type="number" step="0.01" class="form-control" name="{{ campo }}_0"
+                  value="{{ (impostos_padrao[campo] * 100) if impostos_padrao[campo] else '' }}">
+              </td>
+              {% endfor %}
+            </tr>
+          </tbody>
+        </table>
+
+        <h5 class="mt-5">Incidência de Impostos por Categoria</h5>
+        <table class="table table-bordered">
+        <thead>
+            <tr>
+            <th>Categoria</th>
+            <th class="text-center">CST 01 <br>(Alíquota Básica)</br></th>
+            <th class="text-center">CST 04 <br>(Alíquota 0)</br></th>
+            <th class="text-center">CST 09 <br>(Suspensão)</br></th>
+            <th class="text-center">CST 51 <br>(Diferimento)</br></th>
+            <th class="text-center">IRPJ</th>
+            <th class="text-center">CSLL</th>
+            <th class="text-center">ICMS</th>
+            <th class="text-center">ICMS-FE R1</th>
+            <th class="text-center">ICMS-FE R2</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for imposto in impostos %}
+            <tr>
+            <td>{{ imposto.categoria }}</td>
+
+            {% for cst_opcao in ['01', '04', '09', '51'] %}
+            <td class="text-center">
+            <input type="radio" class="form-check-input"
+                    name="cst_{{ imposto.categoriaID }}"
+                    id="cst_{{ imposto.categoriaID }}_{{ cst_opcao }}"
+                    value="{{ cst_opcao }}"
+                    {% if imposto.cst and ("%02d" % imposto.cst) == cst_opcao %}checked{% endif %}>
+            </td>
+            {% endfor %}
+
+
+            {% for campo in ['irpj', 'csll', 'icms', 'icms_fe', 'icms_fe_2'] %}
+            <td class="text-center">
+                <input type="checkbox"
+                    name="{{ campo }}_{{ imposto.categoriaID }}"
+                    {% if imposto[campo] %}checked{% endif %}>
+            </td>
+            {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+      </form>
+    </div>
+
+    <!-- Aba Tipos -->
+    <div class="tab-pane fade" id="tipos" role="tabpanel" aria-labelledby="tipos-tab">
+      <form method="POST" class="mt-3" action="{{ url_for('tipos_bp.adicionar_tipo') }}">
+        <div class="form-group">
+          <label for="tipo">Novo Tipo</label>
+          <input type="text" class="form-control" id="tipo" name="tipo">
+        </div>
+        <button type="submit" class="btn btn-primary">Adicionar Tipo</button>
+      </form>
+      <table class="table table-striped mt-4">
+        <thead><tr><th>ID</th><th>Tipo</th></tr></thead>
+        <tbody>
+          {% for tipo in tipos %}
+          <tr><td>{{ tipo.tipoID }}</td><td>{{ tipo.tipo }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Aba Categorias -->
+    <div class="tab-pane fade" id="categorias" role="tabpanel" aria-labelledby="categorias-tab">
+      <form method="POST" class="mt-3" action="{{ url_for('categorias_bp.adicionar_categoria') }}">
+        <div class="form-group">
+          <label for="categoria">Nova Categoria</label>
+          <input type="text" class="form-control" id="categoria" name="categoria">
+          <label for="tipo_categoria">Tipo Relacionado</label>
+          <select class="form-control" id="tipo_categoria" name="tipo_categoria">
+            {% for tipo in tipos %}
+            <option value="{{ tipo.tipoID }}">{{ tipo.tipo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Adicionar Categoria</button>
+      </form>
+      <table class="table table-striped mt-4">
+        <thead><tr><th>ID</th><th>Categoria</th></tr></thead>
+        <tbody>
+          {% for categoria in categorias %}
+          <tr><td>{{ categoria.categoriaID }}</td><td>{{ categoria.categoria }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Aba Unidades -->
+    <div class="tab-pane fade" id="unidades" role="tabpanel" aria-labelledby="unidades-tab">
+      <form method="POST" class="mt-3" action="{{ url_for('unidades_bp.adicionar_unidade') }}">
+        <div class="form-group">
+          <label for="unidade">Nova Unidade</label>
+          <input type="text" class="form-control" id="unidade" name="unidade">
+          <label for="unidade_desc">Descrição</label>
+          <input type="text" class="form-control" id="unidade_desc" name="unidade_desc">
+        </div>
+        <button type="submit" class="btn btn-primary">Adicionar Unidade</button>
+      </form>
+      <table class="table table-striped mt-4">
+        <thead><tr><th>ID</th><th>Unidade</th><th>Descrição</th></tr></thead>
+        <tbody>
+          {% for unidade in unidades %}
+          <tr><td>{{ unidade.unidadeID }}</td><td>{{ unidade.unidade }}</td><td>{{ unidade.unidade_desc }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const hash = window.location.hash;
+    if (hash) {
+      const tab = new bootstrap.Tab(document.querySelector(`button[data-bs-target="${hash}"]`));
+      tab.show();
+    }
+  });
+</script>
 {% endblock %}
