@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from conexao import get_db_connection
+from mysql.connector import IntegrityError
 
 parametros_bp = Blueprint('parametros_bp', __name__)
 
@@ -72,7 +73,6 @@ def parametros():
                 icms_fe = impostos_ref['icms_fe'] if request.form.get(f'icms_fe_{categoria_id}') else 0
                 icms_fe_2 = impostos_ref['icms_fe_2'] if request.form.get(f'icms_fe_2_{categoria_id}') else 0
 
-
                 cursor.execute("SELECT COUNT(*) AS count FROM parametros WHERE categoriaID = %s", (categoria_id,))
                 count_result = cursor.fetchone()
 
@@ -93,18 +93,20 @@ def parametros():
     juros_diario = row.get('juros_diario', 0)
 
     cursor.execute("""
-        SELECT c.categoriaID, c.categoria, p.producao, p.frete, p.outros_custos, p.lucro_desejado
+        SELECT c.categoriaID, c.categoria, t.tipo, p.producao, p.frete, p.outros_custos, p.lucro_desejado
         FROM categoria c
         LEFT JOIN parametros p ON c.categoriaID = p.categoriaID
+        LEFT JOIN tipo t ON c.categoria_tipoID = t.tipoID
         WHERE c.categoria_tipoID IN (3, 4, 5)
         ORDER BY c.categoria
     """)
     categorias = cursor.fetchall()
 
     cursor.execute("""
-        SELECT c.categoriaID, c.categoria, p.pis, p.cofins, p.irpj, p.csll, p.icms, p.icms_fe, p.icms_fe_2, p.cst
+        SELECT c.categoriaID, c.categoria, t.tipo, p.pis, p.cofins, p.irpj, p.csll, p.icms, p.icms_fe, p.icms_fe_2, p.cst
         FROM categoria c
         LEFT JOIN parametros p ON c.categoriaID = p.categoriaID
+        LEFT JOIN tipo t ON c.categoria_tipoID = t.tipoID
         WHERE c.categoria_tipoID IN (3, 4, 5)
         ORDER BY c.categoria
     """)
@@ -123,6 +125,13 @@ def parametros():
     """)
     impostos_padrao = cursor.fetchone()
 
+    cursor.execute("""
+        SELECT categoriaID, categoria, categoria_tipoID
+        FROM categoria
+        ORDER BY categoria
+    """)
+    todas_categorias = cursor.fetchall()
+
     cursor.close()
     conn.close()
 
@@ -134,5 +143,126 @@ def parametros():
         unidades=unidades,
         custo_oportunidade=custo_oportunidade,
         juros_diario=juros_diario,
-        impostos_padrao=impostos_padrao
+        impostos_padrao=impostos_padrao,
+        todas_categorias=todas_categorias
     )
+
+# ===== ROTAS DE EDIÇÃO E EXCLUSÃO =====
+@parametros_bp.route('/editar_tipo/<int:tipo_id>', methods=['POST'])
+def editar_tipo(tipo_id):
+    nome = request.form.get('tipo')
+    if not nome:
+        flash('O nome do tipo não pode estar vazio.', 'warning')
+        return redirect(url_for('parametros_bp.parametros') + '#tipos')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE tipo SET tipo = %s WHERE tipoID = %s", (nome, tipo_id))
+        conn.commit()
+        flash('Tipo editado com sucesso.', 'success')
+    except Exception:
+        flash('Erro ao editar o tipo.', 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+    return redirect(url_for('parametros_bp.parametros') + '#tipos')
+
+@parametros_bp.route('/excluir_tipo/<int:tipo_id>', methods=['POST'])
+def excluir_tipo(tipo_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM tipo WHERE tipoID = %s", (tipo_id,))
+        conn.commit()
+        flash('Tipo excluído com sucesso.', 'success')
+    except IntegrityError:
+        flash('Não é possível excluir este tipo, pois ele está relacionado a uma ou mais categorias.', 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+    return redirect(url_for('parametros_bp.parametros') + '#tipos')
+
+@parametros_bp.route('/editar_categoria/<int:categoria_id>', methods=['POST'])
+def editar_categoria(categoria_id):
+    nome = request.form.get('categoria')
+    tipo_id = request.form.get('tipo_categoria')
+    if not nome or not tipo_id:
+        flash('Nome e tipo são obrigatórios.', 'warning')
+        return redirect(url_for('parametros_bp.parametros') + '#categorias')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE categoria SET categoria = %s, categoria_tipoID = %s WHERE categoriaID = %s", (nome, tipo_id, categoria_id))
+        conn.commit()
+        flash('Categoria editada com sucesso.', 'success')
+    except Exception:
+        flash('Erro ao editar a categoria.', 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+    return redirect(url_for('parametros_bp.parametros') + '#categorias')
+
+@parametros_bp.route('/excluir_categoria/<int:categoria_id>', methods=['POST'])
+def excluir_categoria(categoria_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM categoria WHERE categoriaID = %s", (categoria_id,))
+        conn.commit()
+        flash('Categoria excluída com sucesso.', 'success')
+    except IntegrityError:
+        flash('Não é possível excluir esta categoria pois ela está relacionada a outros dados.', 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+    return redirect(url_for('parametros_bp.parametros') + '#categorias')
+
+@parametros_bp.route('/editar_unidade/<int:unidade_id>', methods=['POST'])
+def editar_unidade(unidade_id):
+    unidade = request.form.get('unidade')
+    desc = request.form.get('unidade_desc')
+    if not unidade:
+        flash('A unidade não pode estar vazia.', 'warning')
+        return redirect(url_for('parametros_bp.parametros') + '#unidades')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE unidades SET unidade = %s, unidade_desc = %s WHERE unidadeID = %s", (unidade, desc, unidade_id))
+        conn.commit()
+        flash('Unidade editada com sucesso.', 'success')
+    except Exception:
+        flash('Erro ao editar a unidade.', 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+    return redirect(url_for('parametros_bp.parametros') + '#unidades')
+
+@parametros_bp.route('/excluir_unidade/<int:unidade_id>', methods=['POST'])
+def excluir_unidade(unidade_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM unidades WHERE unidadeID = %s", (unidade_id,))
+        conn.commit()
+        flash('Unidade excluída com sucesso.', 'success')
+    except IntegrityError:
+        flash('Não é possível excluir esta unidade pois ela está relacionada a outros dados.', 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+    return redirect(url_for('parametros_bp.parametros') + '#unidades')
+
+@parametros_bp.route('/excluir_parametros/<int:categoria_id>', methods=['POST'])
+def excluir_parametros(categoria_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM parametros WHERE categoriaID = %s", (categoria_id,))
+        conn.commit()
+        flash('Custos da categoria excluídos com sucesso.', 'success')
+    except Exception:
+        flash('Erro ao excluir os custos desta categoria.', 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+    return redirect(url_for('parametros_bp.parametros') + '#custos')

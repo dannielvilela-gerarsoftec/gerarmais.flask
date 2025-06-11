@@ -34,7 +34,8 @@ $(document).ready(function () {
     });
   }
 
-  $('#btn-filtrar').on('click', carregarProdutos);
+  $('#filtro-nome').on('input', carregarProdutos);
+  $('#filtro-categoria, #filtro-preco').on('change', carregarProdutos);
   carregarProdutos();
 
   window.abrirRelatorio = function () {
