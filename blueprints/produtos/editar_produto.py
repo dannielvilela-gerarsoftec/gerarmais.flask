@@ -125,6 +125,11 @@ def editar_produto(produtoID):
         'fe': prec_rev(False, False),
         'fe_fr': prec_rev(True, False),
     }
+    produto_revenda_de = precs_rev['de'][0]
+    produto_revenda_de_fr = precs_rev['de_fr'][0]
+    produto_revenda_fe = precs_rev['fe'][0]
+    produto_revenda_fe_fr = precs_rev['fe_fr'][0]
+
 
     def calc_pagamentos(base):
         base = Decimal(base)
@@ -183,7 +188,9 @@ def editar_produto(produtoID):
                 produto_unidadeID=%s, produto_custo=%s, produto_custo_moeda=%s,
                 produto_custo_dolar=%s, produto_fornecedor=%s,
                 produto_venda_de=%s, produto_venda_de_fr=%s,
-                produto_venda_fe=%s, produto_venda_fe_fr=%s
+                produto_venda_fe=%s, produto_venda_fe_fr=%s,
+                produto_revenda_de=%s, produto_revenda_de_fr=%s,
+                produto_revenda_fe=%s, produto_revenda_fe_fr=%s
             WHERE produtoID = %s
         """
         cursor.execute(update_query, (
@@ -191,8 +198,10 @@ def editar_produto(produtoID):
             produto_peso, produto_validade, produto_unidadeID, produto_custo,
             produto_custo_moeda, produto_custo_dolar, produto_fornecedor,
             preco_venda_de, preco_venda_de_fr, preco_venda_fe, preco_venda_fe_fr,
+            produto_revenda_de, produto_revenda_de_fr, produto_revenda_fe, produto_revenda_fe_fr,
             produtoID
         ))
+
         conn.commit()
         flash("Produto atualizado com sucesso!", "success")
         return redirect(url_for('editar_produto_bp.editar_produto', produtoID=produtoID))
