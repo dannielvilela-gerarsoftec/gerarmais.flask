@@ -64,6 +64,7 @@
             <th>Frete</th>
             <th>Outros Custos</th>
             <th>Lucro Desejado</th>
+            <th>Lucro Revenda (%)</th>
             <th>Ações</th> <!-- NOVA COLUNA -->
           </tr>
         </thead>
@@ -76,6 +77,11 @@
             <td><input type="number" class="form-control" step="0.01" name="frete_{{ categoria.categoriaID }}" value="{{ categoria.frete or '' }}"></td>
             <td><input type="number" class="form-control" step="0.01" name="outros_custos_{{ categoria.categoriaID }}" value="{{ (categoria.outros_custos * 100) if categoria.outros_custos is not none else '' }}"></td>
             <td><input type="number" class="form-control" step="0.01" name="lucro_desejado_{{ categoria.categoriaID }}" value="{{ (categoria.lucro_desejado * 100) if categoria.lucro_desejado is not none else '' }}"></td>
+            <td>
+              <input type="number" class="form-control" name="lucro_revenda_{{ categoria.categoriaID }}"
+                  value="{{ (categoria.lucro_revenda or 0) * 100 | round(2) }}"
+                  step="0.01" min="0">
+          </td>
             <td>
               <form method="POST" action="{{ url_for('parametros_bp.excluir_parametros', categoria_id=categoria.categoriaID) }}" style="display:inline;">
                 <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Excluir custos desta categoria?')">

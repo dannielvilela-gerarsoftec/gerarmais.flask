@@ -43,21 +43,20 @@
       </li>
   </ul>
 
-  <div class="tab-content" id="myTabContent">
-      <div class="tab-pane fade show active" id="produto" role="tabpanel">
-          <form method="POST" id="form-editar-produto">
-              {% include 'partials/_form_produto.html' %}
-          </form>
+  <form method="POST" id="form-editar-produto">
+    <div class="tab-content" id="myTabContent">
+        <div class="tab-pane fade show active" id="produto" role="tabpanel">
+            {% include 'partials/_form_produto.html' %}
+            {% if produto and not clonar %}
+                {% include 'partials/_modal_excluir_produto.html' %}
+            {% endif %}
+        </div>
+        <div class="tab-pane fade" id="precificacao" role="tabpanel">
+            {% include 'partials/_precificacao.html' %}
+        </div>
+    </div> 
+  </form>
 
-          {% if produto and not clonar %}
-              {% include 'partials/_modal_excluir_produto.html' %}
-          {% endif %}
-      </div>
-      <div class="tab-pane fade" id="precificacao" role="tabpanel">
-          {% include 'partials/_precificacao.html' %}
-      </div>
-  </div> 
-</div>
 {% include 'partials/_script_precificacao_dolar.html' %}
 
 {% endblock %}

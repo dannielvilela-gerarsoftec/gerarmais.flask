@@ -6,20 +6,20 @@ from blueprints.cadastros.cadastro_produto import get_ptax_dia_anterior
 editar_produto_bp = Blueprint('editar_produto_bp', __name__)
 
 def sanitize_decimal(value):
-    if not value:
+    if value in (None, '', ' '):
         return None
     try:
-        value = value.replace(',', '.').strip()
-        return Decimal(value)
+        return Decimal(str(value).replace(',', '.').strip())
     except InvalidOperation:
         return None
+
 
 def obter_parametros(categoriaID):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""
         SELECT pis, cofins, irpj, csll, icms, icms_fe, frete, producao,
-               outros_custos, lucro_desejado, juros_diario
+               outros_custos, lucro_desejado, lucro_revenda, juros_diario
         FROM parametros
         WHERE categoriaID = %s
     """, (categoriaID,))
@@ -76,6 +76,13 @@ def editar_produto(produtoID):
         produto['produto_custo_convertido'] = produto['produto_custo']
 
     parametros = obter_parametros(produto['produto_categoriaID'])
+
+    # Buscar juros_diario e custo_oportunidade da categoriaID = 0
+    cursor.execute("SELECT juros_diario, custo_oportunidade FROM parametros WHERE categoriaID = 0")
+    juros_row = cursor.fetchone()
+    juros_diario = float(juros_row.get('juros_diario', 0.001))
+    custo_oportunidade = float(juros_row.get('custo_oportunidade', 0))
+
     frete_ton = Decimal(parametros.get('frete', 0))
     producao_ton = Decimal(parametros.get('producao', 0))
     outros_pct = Decimal(parametros.get('outros_custos', 0))
@@ -86,8 +93,6 @@ def editar_produto(produtoID):
     csll = Decimal(parametros.get('csll', 0))
     icms = Decimal(parametros.get('icms', 0))
     icms_fe = Decimal(parametros.get('icms_fe', 0))
-    juros_diario = float(parametros.get('juros_diario', 0.001))
-
     peso = Decimal(produto.get('produto_peso') or 0)
     custo = Decimal(produto.get('produto_custo') or 0)
     frete = (frete_ton / 1000) * peso
@@ -105,6 +110,39 @@ def editar_produto(produtoID):
         'fe': prec(False, False),
         'fe_fr': prec(True, False),
     }
+
+    lucro_revenda_pct = Decimal(parametros.get('lucro_revenda', 0))
+
+    def prec_rev(usa_frete, usa_icms):
+        return calcular_precificacao(
+            custo, frete if usa_frete else 0, producao, lucro_revenda_pct, outros_pct,
+            pis, cofins, irpj, csll, icms if usa_icms else icms_fe
+        )
+
+    precs_rev = {
+        'de': prec_rev(False, True),
+        'de_fr': prec_rev(True, True),
+        'fe': prec_rev(False, False),
+        'fe_fr': prec_rev(True, False),
+    }
+
+    def calc_pagamentos(base):
+        base = Decimal(base)
+        return {
+            'avista': float(base),
+            '28': float(base * (Decimal('1') + Decimal(str(juros_diario)) * Decimal('28'))),
+            '56': float(base * (Decimal('1') + Decimal(str(juros_diario)) * Decimal('56'))),
+            '28_56': float(base * (Decimal('1') + Decimal(str(juros_diario)) * Decimal('42'))),
+            '84': float(base * (Decimal('1') + Decimal(str(juros_diario)) * Decimal('84'))),
+            '3x': float(base * (Decimal('1') + Decimal(str(juros_diario)) * Decimal('70'))),
+        }
+ 
+    tabela_pagamentos_revenda = [
+        {'nome': 'Dentro - Sem Frete', **calc_pagamentos(precs_rev['de'][0])},
+        {'nome': 'Dentro - Com Frete', **calc_pagamentos(precs_rev['de_fr'][0])},
+        {'nome': 'Fora - Sem Frete', **calc_pagamentos(precs_rev['fe'][0])},
+        {'nome': 'Fora - Com Frete', **calc_pagamentos(precs_rev['fe_fr'][0])},
+    ]
 
     if request.method == 'POST':
         form = request.form
@@ -130,6 +168,14 @@ def editar_produto(produtoID):
             produto_custo_dolar = produto_custo
             produto_custo = round(produto_custo_dolar * Decimal(str(ptax)), 4)
 
+        print(">>> POST recebido")
+        print("preco_venda_de bruto:", form.get('preco_venda_de'))
+
+        preco_venda_de = sanitize_decimal(form.get('preco_venda_de'))
+        preco_venda_de_fr = sanitize_decimal(form.get('preco_venda_de_fr'))
+        preco_venda_fe = sanitize_decimal(form.get('preco_venda_fe'))
+        preco_venda_fe_fr = sanitize_decimal(form.get('preco_venda_fe_fr'))
+
         update_query = """
             UPDATE produtos SET 
                 produto_nome=%s, produto_tipoID=%s, produto_categoriaID=%s,
@@ -144,32 +190,24 @@ def editar_produto(produtoID):
             produto_nome, produto_tipoID, produto_categoriaID, produto_descricao,
             produto_peso, produto_validade, produto_unidadeID, produto_custo,
             produto_custo_moeda, produto_custo_dolar, produto_fornecedor,
-            Decimal(form.get('preco_venda_de') or 0),
-            Decimal(form.get('preco_venda_de_fr') or 0),
-            Decimal(form.get('preco_venda_fe') or 0),
-            Decimal(form.get('preco_venda_fe_fr') or 0),
+            preco_venda_de, preco_venda_de_fr, preco_venda_fe, preco_venda_fe_fr,
             produtoID
         ))
         conn.commit()
         flash("Produto atualizado com sucesso!", "success")
         return redirect(url_for('editar_produto_bp.editar_produto', produtoID=produtoID))
 
-    def calc_pagamentos(base):
-        return {
-            'avista': float(base),
-            '28': float(base + base * Decimal(juros_diario * 28)),
-            '56': float(base + base * Decimal(juros_diario * 56)),
-            '28_56': float(base + base * Decimal(juros_diario * 42)),
-            '84': float(base + base * Decimal(juros_diario * 84)),
-            '3x': float(base + base * Decimal(juros_diario * 70)),
-        }
-
     tabela_pagamentos = [
         {'nome': 'Dentro - Sem Frete', **calc_pagamentos(Decimal(produto.get('produto_venda_de') or precs['de'][0]))},
         {'nome': 'Dentro - Com Frete', **calc_pagamentos(Decimal(produto.get('produto_venda_de_fr') or precs['de_fr'][0]))},
         {'nome': 'Fora - Sem Frete', **calc_pagamentos(Decimal(produto.get('produto_venda_fe') or precs['fe'][0]))},
         {'nome': 'Fora - Com Frete', **calc_pagamentos(Decimal(produto.get('produto_venda_fe_fr') or precs['fe_fr'][0]))},
+        
     ]
+
+    for campo in ['produto_venda_de', 'produto_venda_de_fr', 'produto_venda_fe', 'produto_venda_fe_fr']:
+        valor = produto.get(campo)
+        produto[campo] = float(valor) if valor is not None else ''
 
     cursor.close()
     conn.close()
@@ -198,6 +236,7 @@ def editar_produto(produtoID):
         tabela_pagamentos=tabela_pagamentos,
         ptax=ptax_valor,
         ptax_data=ptax_data,
+        tabela_pagamentos_revenda=tabela_pagamentos_revenda,
         clonar=False
     )
 

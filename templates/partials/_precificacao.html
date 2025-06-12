@@ -6,38 +6,100 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const blocos = ['de', 'de_fr', 'fe', 'fe_fr'];
+    const blocosRev = ['rev_de', 'rev_de_fr', 'rev_fe', 'rev_fe_fr'];
+    const jurosDiario = {{ parametros['juros_diario']|default(0.001)|float }};
 
     function toDecimal(value) {
-        value = ('' + value).replace(',', '.').replace('R$', '').trim();
+        if (!value) return 0;
+        value = ('' + value).replace(/\s/g, '').replace('R$', '').trim();
+
+        // Se tiver vírgula, assume formato BR e converte
+        if (value.includes(',')) {
+            return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+        }
+
+        // Caso contrário, já está no formato correto (enviado direto do backend)
         return parseFloat(value) || 0;
     }
 
     function atualizarCamposBloco(bloco) {
         const input = document.getElementById(`preco_venda_${bloco}`);
         const valorVenda = toDecimal(input.value);
-        const custoTotal = toDecimal(document.getElementById(`custo_total_${bloco}`).innerText);
-        const impostos = toDecimal(document.getElementById(`total_impostos_${bloco}`).innerText);
 
-        const lucroLiquido = valorVenda - custoTotal - impostos;
+        const pis = parseFloat(document.getElementById('param_pis').value) || 0;
+        const cofins = parseFloat(document.getElementById('param_cofins').value) || 0;
+        const irpj = parseFloat(document.getElementById('param_irpj').value) || 0;
+        const csll = parseFloat(document.getElementById('param_csll').value) || 0;
+        const icms = parseFloat(document.getElementById(`param_icms_${bloco}`).value) || 0;
+
+        let icms_fe = 0;
+        if (bloco.includes('fe')) {
+            icms_fe = parseFloat(document.getElementById('param_icms_fe_extra').value) || 0;
+        }
+
+        const percentualImpostos = pis + cofins + irpj + csll + icms + icms_fe;
+        const impostos = valorVenda * percentualImpostos;
+
+        const custoProduto = toDecimal(document.getElementById('custo_produto').innerText);
+        const producao = toDecimal(document.getElementById('custo_producao').innerText);
+        const frete = toDecimal(document.getElementById(`custo_frete_${bloco}`).innerText);
+        const outrosPct = parseFloat(document.getElementById('param_outros_custos').value) || 0;
+        
+        const outrosCustos = valorVenda * outrosPct;
+        const custoTotal = custoProduto + producao + frete + outrosCustos + impostos;
+
+        const lucroLiquido = valorVenda - custoTotal;
         const lucroPercentual = valorVenda ? (lucroLiquido / valorVenda) * 100 : 0;
 
-        document.getElementById(`lucro_liquido_r_${bloco}`).innerText = `R$ ${lucroLiquido.toFixed(2)}`;
+        document.getElementById(`custo_total_${bloco}`).innerText = custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        document.getElementById(`total_impostos_${bloco}`).innerText = impostos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        document.getElementById(`lucro_liquido_r_${bloco}`).innerText = lucroLiquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         document.getElementById(`lucro_liquido_percent_${bloco}`).innerText = `${lucroPercentual.toFixed(2)}%`;
+        document.getElementById(`outros_custos_${bloco}`).innerText = outrosCustos.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // Tabela pagamento
+
         const juros = {
             'avista': 0,
-            '28': 0.028,
-            '56': 0.056,
-            '28_56': 0.042,
-            '84': 0.084,
-            '3x': 0.070
+            '28': jurosDiario * 28,
+            '56': jurosDiario * 56,
+            '28_56': jurosDiario * 42,
+            '84': jurosDiario * 84,
+            '3x': jurosDiario * 70
         };
+
         for (const prazo in juros) {
             const fator = 1 + juros[prazo];
             const campoID = `pagamento_${bloco}_${prazo}`;
             const campo = document.getElementById(campoID);
-            if (campo) campo.innerText = `R$ ${(valorVenda * fator).toFixed(2)}`;
+            if (campo) {
+                campo.innerText = (valorVenda * fator).toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                });
+            }
+        }
+    }
+
+    function atualizarCamposBlocoRev(bloco, valorBase) {
+        const juros = {
+            'avista': 0,
+            '28': jurosDiario * 28,
+            '56': jurosDiario * 56,
+            '28_56': jurosDiario * 42,
+            '84': jurosDiario * 84,
+            '3x': jurosDiario * 70
+        };
+
+        for (const prazo in juros) {
+            const fator = 1 + juros[prazo];
+            const campoID = `pagamento_${bloco}_${prazo}`;
+            const campo = document.getElementById(campoID);
+            if (campo) {
+                campo.innerText = (valorBase * fator).toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                });
+            }
         }
     }
 
@@ -45,67 +107,97 @@ document.addEventListener('DOMContentLoaded', function () {
         const input = document.getElementById(`preco_venda_${bloco}`);
         if (input) {
             input.addEventListener('input', () => atualizarCamposBloco(bloco));
-            atualizarCamposBloco(bloco); // Executa ao carregar
+            //atualizarCamposBloco(bloco); // também executa ao carregar a página
         }
+    });
+
+    blocosRev.forEach(bloco => {
+        const base = toDecimal(document.getElementById(`preco_${bloco}`).innerText);
+        atualizarCamposBlocoRev(bloco, base);
     });
 });
 </script>
 
+<input type="hidden" id="param_pis" value="{{ parametros.pis or 0 }}">
+<input type="hidden" id="param_cofins" value="{{ parametros.cofins or 0 }}">
+<input type="hidden" id="param_irpj" value="{{ parametros.irpj or 0 }}">
+<input type="hidden" id="param_csll" value="{{ parametros.csll or 0 }}">
+<input type="hidden" id="param_icms_fe_extra" value="{{ parametros.icms_fe_2 or 0 }}">
+<input type="hidden" id="param_outros_custos" value="{{ parametros.outros_custos or 0 }}">
+
+
+{% for bloco in ['de', 'de_fr', 'fe', 'fe_fr'] %}
+  <input type="hidden" id="param_icms_{{ bloco }}" value="{{ parametros.icms if 'fe' not in bloco else parametros.icms_fe }}">
+{% endfor %}
+
 <div class="mt-4">
     <h5>Condições de Pagamento</h5>
-    <table class="table table-bordered text-center align-middle">
-        <thead class="table-light">
-            <tr>
-                <th>Condição</th>
-                <th>Dentro do Estado<br>(Sem frete)</th>
-                <th>Fora do Estado<br>(Sem frete)</th>
-                <th>Dentro do Estado<br>(Com frete)</th>
-                <th>Fora do Estado<br>(Com frete)</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><strong>À vista</strong></td>
-                <td id="pagamento_de_avista"></td>
-                <td id="pagamento_fe_avista"></td>
-                <td id="pagamento_de_fr_avista"></td>
-                <td id="pagamento_fe_fr_avista"></td>
-            </tr>
-            <tr>
-                <td><strong>28 dias</strong></td>
-                <td id="pagamento_de_28"></td>
-                <td id="pagamento_fe_28"></td>
-                <td id="pagamento_de_fr_28"></td>
-                <td id="pagamento_fe_fr_28"></td>
-            </tr>
-            <tr>
-                <td><strong>56 dias</strong></td>
-                <td id="pagamento_de_56"></td>
-                <td id="pagamento_fe_56"></td>
-                <td id="pagamento_de_fr_56"></td>
-                <td id="pagamento_fe_fr_56"></td>
-            </tr>
-            <tr>
-                <td><strong>28/56 dias</strong></td>
-                <td id="pagamento_de_28_56"></td>
-                <td id="pagamento_fe_28_56"></td>
-                <td id="pagamento_de_fr_28_56"></td>
-                <td id="pagamento_fe_fr_28_56"></td>
-            </tr>
-            <tr>
-                <td><strong>84 dias</strong></td>
-                <td id="pagamento_de_84"></td>
-                <td id="pagamento_fe_84"></td>
-                <td id="pagamento_de_fr_84"></td>
-                <td id="pagamento_fe_fr_84"></td>
-            </tr>
-            <tr>
-                <td><strong>3x</strong></td>
-                <td id="pagamento_de_3x"></td>
-                <td id="pagamento_fe_3x"></td>
-                <td id="pagamento_de_fr_3x"></td>
-                <td id="pagamento_fe_fr_3x"></td>
-            </tr>
-        </tbody>
-    </table>
+
+    <ul class="nav nav-pills mb-3" id="tabPagamento" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-venda" data-bs-toggle="pill" data-bs-target="#venda" type="button" role="tab">Venda</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-revenda" data-bs-toggle="pill" data-bs-target="#revenda" type="button" role="tab">Revenda</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="tabPagamentoContent">
+        <div class="tab-pane fade show active" id="venda" role="tabpanel">
+            <table class="table table-sm table-bordered text-center align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Condição</th>
+                        <th>A Vista</th>
+                        <th>28 Dias</th>
+                        <th>56 Dias</th>
+                        <th>28/56</th>
+                        <th>84 Dias</th>
+                        <th>3x</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in tabela_pagamentos %}
+                    <tr>
+                        <td>{{ row.nome }}</td>
+                        <td>R$ {{ '%.2f' % row.avista }}</td>
+                        <td>R$ {{ '%.2f' % row['28'] }}</td>
+                        <td>R$ {{ '%.2f' % row['56'] }}</td>
+                        <td>R$ {{ '%.2f' % row['28_56'] }}</td>
+                        <td>R$ {{ '%.2f' % row['84'] }}</td>
+                        <td>R$ {{ '%.2f' % row['3x'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="tab-pane fade" id="revenda" role="tabpanel">
+            <table class="table table-sm table-bordered text-center align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Condição</th>
+                        <th>A Vista</th>
+                        <th>28 Dias</th>
+                        <th>56 Dias</th>
+                        <th>28/56</th>
+                        <th>84 Dias</th>
+                        <th>3x</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in tabela_pagamentos_revenda %}
+                    <tr>
+                       <td>{{ row.nome }}</td>
+                        <td id="pagamento_rev_de_avista">R$ {{ '%.2f' % row.avista }}</td>
+                        <td id="pagamento_rev_de_28">R$ {{ '%.2f' % row['28'] }}</td>
+                        <td id="pagamento_rev_de_56">R$ {{ '%.2f' % row['56'] }}</td>
+                        <td id="pagamento_rev_de_28_56">R$ {{ '%.2f' % row['28_56'] }}</td>
+                        <td id="pagamento_rev_de_84">R$ {{ '%.2f' % row['84'] }}</td>
+                        <td id="pagamento_rev_de_3x">R$ {{ '%.2f' % row['3x'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>

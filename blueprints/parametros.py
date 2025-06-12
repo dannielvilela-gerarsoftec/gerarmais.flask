@@ -28,20 +28,23 @@ def parametros():
                 frete = float(request.form.get(f'frete_{categoria_id}', 0) or '0')
                 outros_custos = float(request.form.get(f'outros_custos_{categoria_id}', 0) or '0') / 100
                 lucro_desejado = float(request.form.get(f'lucro_desejado_{categoria_id}', 0) or '0') / 100
+                lucro_revenda = float(request.form.get(f'lucro_revenda_{categoria_id}', 0) or '0') / 100
 
                 cursor.execute("SELECT COUNT(*) AS count FROM parametros WHERE categoriaID = %s", (categoria_id,))
                 count_result = cursor.fetchone()
 
                 if count_result['count'] > 0:
                     cursor.execute("""
-                        UPDATE parametros SET producao = %s, frete = %s, outros_custos = %s, lucro_desejado = %s
+                        UPDATE parametros SET producao = %s, frete = %s, outros_custos = %s, lucro_desejado = %s, lucro_revenda = %s
                         WHERE categoriaID = %s
-                    """, (producao, frete, outros_custos, lucro_desejado, categoria_id))
+                    """, (producao, frete, outros_custos, lucro_desejado, lucro_revenda, categoria_id))
+
                 else:
                     cursor.execute("""
-                        INSERT INTO parametros (categoriaID, producao, frete, outros_custos, lucro_desejado, custo_oportunidade, juros_diario)
-                        VALUES (%s, %s, %s, %s, %s, 0, 0)
-                    """, (categoria_id, producao, frete, outros_custos, lucro_desejado))
+                        INSERT INTO parametros (categoriaID, producao, frete, outros_custos, lucro_desejado, lucro_revenda, custo_oportunidade, juros_diario)
+                        VALUES (%s, %s, %s, %s, %s, %s, 0, 0)
+                    """, (categoria_id, producao, frete, outros_custos, lucro_desejado, lucro_revenda))
+
 
         elif aba == 'impostos':
             impostos_padrao = {}
@@ -93,7 +96,7 @@ def parametros():
     juros_diario = row.get('juros_diario', 0)
 
     cursor.execute("""
-        SELECT c.categoriaID, c.categoria, t.tipo, p.producao, p.frete, p.outros_custos, p.lucro_desejado
+        SELECT c.categoriaID, c.categoria, t.tipo, p.producao, p.frete, p.outros_custos, p.lucro_desejado, p.lucro_revenda
         FROM categoria c
         LEFT JOIN parametros p ON c.categoriaID = p.categoriaID
         LEFT JOIN tipo t ON c.categoria_tipoID = t.tipoID
