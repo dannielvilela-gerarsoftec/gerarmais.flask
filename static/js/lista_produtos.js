@@ -3,11 +3,13 @@ $(document).ready(function () {
     const termo = $('#filtro-nome').val();
     const categoria = $('#filtro-categoria').val();
     const preco = $('#filtro-preco').val();
+    const tipo = $('#filtro-tipo').val();
 
     $.getJSON('/produtos/api', {
       q: termo,
       categoria: categoria,
-      preco: preco
+      preco: preco,
+      tipo: tipo
     }, function (produtos) {
       const tbody = $('#tabela-produtos tbody');
       tbody.empty();
@@ -35,65 +37,7 @@ $(document).ready(function () {
   }
 
   $('#filtro-nome').on('input', carregarProdutos);
-  $('#filtro-categoria, #filtro-preco').on('change', carregarProdutos);
-  carregarProdutos();
+  $('#filtro-categoria, #filtro-preco, #filtro-tipo').on('change', carregarProdutos);
 
-  window.abrirRelatorio = function () {
-    const linhas = document.querySelectorAll("#tabela-produtos tbody tr");
-    const now = new Date();
-    const dataHora = now.toLocaleString('pt-BR');
-    const titulo = `Lista de Produtos - ${dataHora}`;
-
-    let conteudo = `
-      <html>
-      <head>
-        <title>${titulo}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          h3 { text-align: center; margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          th, td { border: 1px solid #ccc; padding: 6px; text-align: left; white-space: nowrap; }
-        </style>
-      </head>
-      <body>
-        <h3>${titulo}</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Produto</th>
-              <th>Preço (R$)</th>
-              <th>Unidade</th>
-              <th>Peso (kg)</th>
-              <th>Categoria</th>
-              <th>Fornecedor</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-
-    linhas.forEach(tr => {
-      const tds = tr.querySelectorAll("td");
-      conteudo += `
-        <tr>
-          <td>${tds[0]?.textContent || ''}</td>
-          <td>${tds[1]?.textContent || ''}</td>
-          <td>${tds[2]?.textContent || ''}</td>
-          <td>${tds[3]?.textContent || ''}</td>
-          <td>${tds[5]?.textContent || ''}</td>
-          <td>${tds[6]?.textContent || ''}</td>
-        </tr>
-      `;
-    });
-
-    conteudo += `
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `;
-
-    const novaJanela = window.open('', '_blank');
-    novaJanela.document.write(conteudo);
-    novaJanela.document.close();
-  };
+  carregarProdutos(); // chamada inicial
 });

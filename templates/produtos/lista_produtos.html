@@ -22,7 +22,7 @@
 
 <!-- Filtros -->
   <div id="filtros-container" class="row mb-3">
-    <div class="col-md-6 col-lg-6"> <!-- campo nome mais largo -->
+    <div class="col-md-5 col-lg-5"> <!-- campo nome mais largo -->
       <input type="text" id="filtro-nome" class="form-control" placeholder="Pesquisar por nome">
     </div>
     <div class="col-md-3 col-lg-3">
@@ -33,12 +33,18 @@
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-3 col-lg-3">
+    <div class="col-md-2 col-lg-2">
       <select id="filtro-preco" class="form-select">
         <option value="de">Dentro - Sem Frete</option>
         <option value="de_fr">Dentro - Com Frete</option>
         <option value="fe">Fora - Sem Frete</option>
         <option value="fe_fr">Fora - Com Frete</option>
+      </select>
+    </div>
+    <div class="col-md-2 col-lg-2 mt-2 mt-md-0">
+      <select id="filtro-tipo" class="form-select">
+        <option value="venda">Venda</option>
+        <option value="revenda">Revenda</option>
       </select>
     </div>
   </div>
@@ -108,6 +114,22 @@ function salvarPDF() {
     const height = canvas.height * ratio;
     pdf.addImage(imgData, 'PNG', 40, 40, pageWidth - 80, height);
     pdf.save("lista_produtos.pdf");
+  });
+}
+
+function carregarProdutos() {
+  const nome = $('#filtro-nome').val();
+  const categoria = $('#filtro-categoria').val();
+  const preco = $('#filtro-preco').val();
+  const tipo = $('#filtro-tipo').val(); // novo filtro
+
+  $.getJSON('/produtos/api', {
+    q: nome,
+    categoria: categoria,
+    preco: preco,
+    tipo: tipo
+  }, function(produtos) {
+    // renderização...
   });
 }
 
