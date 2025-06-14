@@ -14,7 +14,6 @@
     <li class="ms-auto">
       <div class="d-flex gap-2">
         <button class="btn btn-outline-primary btn-sm" onclick="abrirRelatorio()">Visualizar Tabela</button>
-
       </div>
     </li>
   </ol>
@@ -22,7 +21,7 @@
 
 <!-- Filtros -->
   <div id="filtros-container" class="row mb-3">
-    <div class="col-md-5 col-lg-5"> <!-- campo nome mais largo -->
+    <div class="col-md-4 col-lg-4"> <!-- campo nome mais largo -->
       <input type="text" id="filtro-nome" class="form-control" placeholder="Pesquisar por nome">
     </div>
     <div class="col-md-3 col-lg-3">
@@ -33,12 +32,12 @@
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-2 col-lg-2">
+    <div class="col-md-3 col-lg-3">
       <select id="filtro-preco" class="form-select">
-        <option value="de">Dentro - Sem Frete</option>
-        <option value="de_fr">Dentro - Com Frete</option>
-        <option value="fe">Fora - Sem Frete</option>
-        <option value="fe_fr">Fora - Com Frete</option>
+        <option value="de">Dentro do Estado-S/Frete</option>
+        <option value="de_fr">Dentro do Estado-C/Frete</option>
+        <option value="fe">Fora do Estado-S/Frete</option>
+        <option value="fe_fr">Fora do Estado-C/Frete</option>
       </select>
     </div>
     <div class="col-md-2 col-lg-2 mt-2 mt-md-0">
@@ -133,23 +132,7 @@ function carregarProdutos() {
   });
 }
 
-document.getElementById('btn-visualizar-relatorio').addEventListener('click', function () {
-  const titulo = document.getElementById("relatorio-titulo");
-  const now = new Date();
-  const dataHora = now.toLocaleString('pt-BR');
-  titulo.textContent = "Lista de Produtos - " + dataHora;
-
-  const tabelaPrincipal = document.querySelectorAll("#tabela-produtos tbody tr");
-  const corpoRelatorio = document.querySelector("#tabela-relatorio tbody");
-  corpoRelatorio.innerHTML = "";
-
-  tabelaPrincipal.forEach(row => {
-    const clone = row.cloneNode(true);
-    corpoRelatorio.appendChild(clone);
-  });
-
-  document.getElementById("relatorio-container").classList.remove("d-none");
-});
+const jurosDiarioGlobal = {{ juros_diario|default(0.00066)|round(8) }};
 </script>
 
 <style>

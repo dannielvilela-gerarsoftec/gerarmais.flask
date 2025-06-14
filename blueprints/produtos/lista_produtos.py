@@ -1,7 +1,18 @@
 from flask import Blueprint, render_template, request, jsonify
 from conexao import get_db_connection
+from datetime import datetime
 
 lista_produtos_bp = Blueprint('lista_produtos', __name__, url_prefix='/produtos')
+
+def get_juros_diario_padrao():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT juros_diario FROM parametros WHERE categoriaID = 0")
+    dados = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return float(dados['juros_diario']) if dados else 0.0
+
 
 @lista_produtos_bp.route('/')
 def lista_produtos():
@@ -14,9 +25,14 @@ def lista_produtos():
     cursor.close()
     conn.close()
 
-    from datetime import datetime
-    return render_template('produtos/lista_produtos.html', categorias=categorias, datahora=datetime.now())
+    juros_diario = get_juros_diario_padrao()  # ← Obtem o valor aqui
 
+    return render_template(
+        'produtos/lista_produtos.html',
+        categorias=categorias,
+        datahora=datetime.now(),
+        juros_diario=juros_diario  # ← Passa para o template
+    )
 
 
 @lista_produtos_bp.route('/api')
@@ -75,4 +91,3 @@ def lista_produtos_api():
     cursor.close()
     conn.close()
     return jsonify(produtos)
-
