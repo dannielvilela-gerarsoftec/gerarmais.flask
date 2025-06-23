@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from conexao import get_db_connection
 from decimal import Decimal, InvalidOperation
 from blueprints.cadastros.cadastro_produto import get_ptax_dia_anterior
+import mysql.connector  # necessário para capturar DatabaseError e errno=1205
+
 
 editar_produto_bp = Blueprint('editar_produto_bp', __name__)
 
@@ -53,6 +55,7 @@ def calcular_precificacao(custo, frete, producao, lucro, outros, pis, cofins, ir
 @editar_produto_bp.route('/editar_produto/<int:produtoID>', methods=['GET', 'POST'])
 def editar_produto(produtoID):
     conn = get_db_connection()
+    conn.autocommit = True  # evita manter transações abertas e deadlock
     cursor = conn.cursor(dictionary=True)
 
     cursor.execute("SELECT * FROM produtos WHERE produtoID = %s", (produtoID,))
@@ -87,14 +90,23 @@ def editar_produto(produtoID):
     producao_ton = Decimal(parametros.get('producao', 0))
     outros_pct = Decimal(parametros.get('outros_custos', 0))
     lucro_pct = Decimal(parametros.get('lucro_desejado', 0))
-    pis = Decimal(parametros.get('pis', 0))
-    cofins = Decimal(parametros.get('cofins', 0))
-    irpj = Decimal(parametros.get('irpj', 0))
-    csll = Decimal(parametros.get('csll', 0))
-    icms = Decimal(parametros.get('icms', 0))
-    icms_fe = Decimal(parametros.get('icms_fe', 0))
+    pis = Decimal(parametros.get('pis') or 0)
+    cofins = Decimal(parametros.get('cofins') or 0)
+    irpj = Decimal(parametros.get('irpj') or 0)
+    csll = Decimal(parametros.get('csll') or 0)
+    icms = Decimal(parametros.get('icms') or 0)
+    icms_fe = Decimal(parametros.get('icms_fe') or 0)
     peso = Decimal(produto.get('produto_peso') or 0)
-    custo = Decimal(produto.get('produto_custo') or 0)
+    custo_base = Decimal(produto.get('produto_custo') or 0)
+    produto_tipoID = int(produto.get('produto_tipoID') or 0)
+
+    # Aplica custo de oportunidade apenas para tipos diferentes de 3 e 4
+    if produto_tipoID not in (3, 4):
+        custo = custo_base * (Decimal(1) + Decimal(custo_oportunidade or 0))
+    else:
+        custo = custo_base
+    
+    custo_com_oportunidade = float(custo)
     frete = (frete_ton / 1000) * peso
     producao = (producao_ton / 1000) * peso
 
@@ -153,6 +165,7 @@ def editar_produto(produtoID):
         form = request.form
 
         produto_nome = form['produto_nome'].strip().upper()
+        produto_ativo = 1 if form.get('produto_ativo') == 'on' else 0
         produto_tipoID = form['produto_tipoID']
         produto_categoriaID = form.get('produto_categoriaID')
         if not produto_categoriaID:
@@ -170,41 +183,59 @@ def editar_produto(produtoID):
 
         if produto_custo_moeda == 'U':
             ptax = get_ptax_dia_anterior()
-            produto_custo_dolar = produto_custo
+            produto_custo_dolar = produto_custo or Decimal(0)
             produto_custo = round(produto_custo_dolar * Decimal(str(ptax)), 4)
-
-        print(">>> POST recebido")
-        print("preco_venda_de bruto:", form.get('preco_venda_de'))
 
         preco_venda_de = sanitize_decimal(form.get('preco_venda_de'))
         preco_venda_de_fr = sanitize_decimal(form.get('preco_venda_de_fr'))
         preco_venda_fe = sanitize_decimal(form.get('preco_venda_fe'))
         preco_venda_fe_fr = sanitize_decimal(form.get('preco_venda_fe_fr'))
 
+        # Se produto estiver desativado, zera os valores de precificação
+        if produto_ativo == 0:
+            preco_venda_de = 0
+            preco_venda_de_fr = 0
+            preco_venda_fe = 0
+            preco_venda_fe_fr = 0
+
         update_query = """
-            UPDATE produtos SET 
-                produto_nome=%s, produto_tipoID=%s, produto_categoriaID=%s,
-                produto_descricao=%s, produto_peso=%s, produto_validade=%s,
-                produto_unidadeID=%s, produto_custo=%s, produto_custo_moeda=%s,
-                produto_custo_dolar=%s, produto_fornecedor=%s,
-                produto_venda_de=%s, produto_venda_de_fr=%s,
-                produto_venda_fe=%s, produto_venda_fe_fr=%s,
-                produto_revenda_de=%s, produto_revenda_de_fr=%s,
-                produto_revenda_fe=%s, produto_revenda_fe_fr=%s
-            WHERE produtoID = %s
+        UPDATE produtos SET 
+            produto_nome=%s, produto_tipoID=%s, produto_categoriaID=%s,
+            produto_descricao=%s, produto_peso=%s, produto_validade=%s,
+            produto_unidadeID=%s, produto_custo=%s, produto_custo_moeda=%s,
+            produto_custo_dolar=%s, produto_fornecedor=%s,
+            produto_venda_de=%s, produto_venda_de_fr=%s,
+            produto_venda_fe=%s, produto_venda_fe_fr=%s,
+            produto_revenda_de=%s, produto_revenda_de_fr=%s,
+            produto_revenda_fe=%s, produto_revenda_fe_fr=%s,
+            produto_ativo=%s
+        WHERE produtoID = %s
         """
+
         cursor.execute(update_query, (
             produto_nome, produto_tipoID, produto_categoriaID, produto_descricao,
             produto_peso, produto_validade, produto_unidadeID, produto_custo,
             produto_custo_moeda, produto_custo_dolar, produto_fornecedor,
             preco_venda_de, preco_venda_de_fr, preco_venda_fe, preco_venda_fe_fr,
             produto_revenda_de, produto_revenda_de_fr, produto_revenda_fe, produto_revenda_fe_fr,
-            produtoID
+            produto_ativo, produtoID
         ))
 
-        conn.commit()
-        flash("Produto atualizado com sucesso!", "success")
-        return redirect(url_for('editar_produto_bp.editar_produto', produtoID=produtoID))
+        try:
+            cursor.execute(update_query, (...))
+            conn.commit()
+        except mysql.connector.errors.DatabaseError as db_err:
+            conn.rollback()
+            if getattr(db_err, 'errno', None) == 1205:
+                flash("Banco ocupado no momento. Tente novamente.", "warning")
+            else:
+                flash(f"Erro ao salvar: {db_err}", "danger")
+            cursor.close()
+            conn.close()
+            return redirect(request.url)
+        else:
+            flash("Produto atualizado com sucesso!", "success")
+
 
     tabela_pagamentos = [
         {'nome': 'Dentro - Sem Frete', **calc_pagamentos(Decimal(produto.get('produto_venda_de') or precs['de'][0]))},
@@ -246,6 +277,8 @@ def editar_produto(produtoID):
         ptax=ptax_valor,
         ptax_data=ptax_data,
         tabela_pagamentos_revenda=tabela_pagamentos_revenda,
+        custo_produto_de=custo_base if produto_tipoID in (3, 4) else custo,
+        custo_com_oportunidade=custo_com_oportunidade,
         clonar=False
     )
 

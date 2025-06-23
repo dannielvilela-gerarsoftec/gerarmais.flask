@@ -57,7 +57,7 @@ def parametros():
                 WHERE categoriaID = 0
             """, impostos_padrao)
 
-            cursor.execute("SELECT categoriaID FROM categoria WHERE categoria_tipoID IN (3, 4, 5)")
+            cursor.execute("SELECT categoriaID FROM categoria WHERE categoria_tipoID IN (2, 3, 4, 5)")
             ids_impostos = [row['categoriaID'] for row in cursor.fetchall()]
 
             cursor.execute("SELECT pis, cofins, irpj, csll, icms, icms_fe, icms_fe_2 FROM parametros WHERE categoriaID = 0")
@@ -100,7 +100,7 @@ def parametros():
         FROM categoria c
         LEFT JOIN parametros p ON c.categoriaID = p.categoriaID
         LEFT JOIN tipo t ON c.categoria_tipoID = t.tipoID
-        WHERE c.categoria_tipoID IN (3, 4, 5)
+        WHERE c.categoria_tipoID IN (2, 3, 4, 5)
         ORDER BY c.categoria
     """)
     categorias = cursor.fetchall()
@@ -110,7 +110,7 @@ def parametros():
         FROM categoria c
         LEFT JOIN parametros p ON c.categoriaID = p.categoriaID
         LEFT JOIN tipo t ON c.categoria_tipoID = t.tipoID
-        WHERE c.categoria_tipoID IN (3, 4, 5)
+        WHERE c.categoria_tipoID IN (2, 3, 4, 5)
         ORDER BY c.categoria
     """)
     impostos = cursor.fetchall()

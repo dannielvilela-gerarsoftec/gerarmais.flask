@@ -21,7 +21,7 @@
   <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb bg-body-tertiary border rounded-3 px-3 py-2 d-flex align-items-center">
       <li class="breadcrumb-item">
-        <a class="text-decoration-none" href="{{ url_for('pg_inicial') }}">Início</a>
+        <a class="text-decoration-none" href="{{ url_for('main.pg_inicial') }}">Início</a>
       </li>
       <li class="breadcrumb-item active" aria-current="page">Parâmetros</li>
     </ol>
@@ -55,15 +55,28 @@
           <button type="submit" class="btn btn-success btn-sm">Salvar</button>
         </div>
 
-        <table class="table table-bordered">
+    <div class="row mt-3">
+      <div class="col-md-6">
+        <label for="custo_oportunidade">Custo de Oportunidade (%)</label>
+        <input type="number" class="form-control" id="custo_oportunidade" name="custo_oportunidade"
+               step="0.01" value="{{ (custo_oportunidade or 0) * 100 }}">
+      </div>
+      <div class="col-md-6">
+        <label for="juros_diario">Juros Diário (%)</label>
+        <input type="number" class="form-control" id="juros_diario" name="juros_diario"
+               step="0.01" value="{{ (juros_diario or 0) * 100 }}">
+      </div>
+    </div>
+
+        <table id="tabelaCustos" class="table table-bordered">
         <thead>
           <tr>
-            <th>Categoria</th>
-            <th>Tipo</th>
-            <th>Produção</th>
-            <th>Frete</th>
-            <th>Outros Custos</th>
-            <th>Lucro Desejado</th>
+            <th data-col="categoria">Categoria</th>
+            <th data-col="tipo">Tipo</th>
+            <th>Produção (R$/tn)</th>
+            <th>Frete (R$/tn)</th>
+            <th>Outros Custos (%)</th>
+            <th>Lucro Desejado (%)</th>
             <th>Lucro Revenda (%)</th>
             <th>Ações</th> <!-- NOVA COLUNA -->
           </tr>
@@ -125,11 +138,11 @@
         </table>
 
         <h5 class="mt-5">Incidência de Impostos por Categoria</h5>
-        <table class="table table-bordered">
+        <table id="tabelaImpostos" class="table table-bordered">
         <thead>
             <tr>
-                <th>Categoria</th>
-                <th>Tipo</th>
+                <th data-col="categoria">Categoria</th>
+                <th data-col="tipo">Tipo</th>
                 <th class="text-center">CST 01 <br>(Alíquota Básica)</br></th>
                 <th class="text-center">CST 04 <br>(Alíquota 0)</br></th>
                 <th class="text-center">CST 09 <br>(Suspensão)</br></th>
@@ -402,6 +415,30 @@
     });
   });
 
+    // SORT
+  const tabelas = document.querySelectorAll('table[id^="tabela"]');
+  tabelas.forEach(table => {
+    const tbody = table.querySelector('tbody');
+    const headers = table.querySelectorAll('thead th');
+    const state = {};
+
+    headers.forEach((th, idx) => {
+      if (th.dataset.col === 'categoria' || th.dataset.col === 'tipo') {
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', () => {
+          const asc = state[idx] === 'asc' ? false : true;
+          const rows = Array.from(tbody.querySelectorAll('tr'));
+          rows.sort((a, b) => {
+            const va = a.children[idx].textContent.trim().toLowerCase();
+            const vb = b.children[idx].textContent.trim().toLowerCase();
+            return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+          });
+          rows.forEach(r => tbody.appendChild(r));
+          state[idx] = asc ? 'asc' : 'desc';
+        });
+      }
+    });
+  });
 
 </script>
 {% endblock %}

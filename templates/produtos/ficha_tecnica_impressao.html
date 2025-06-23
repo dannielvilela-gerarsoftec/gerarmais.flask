@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Ficha Técnica</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+        body {
+            padding: 2rem;
+            font-size: 14px;
+        }
+        h1, h5 {
+            margin-bottom: 0.5rem;
+        }
+        .autorizacao {
+            margin-top: 2rem;
+            border: 1px solid #333;
+            padding: 1rem;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Ficha Técnica</h1>
+        <button class="btn btn-primary no-print" onclick="window.print()">
+            <i class="bi bi-printer"></i> Imprimir
+        </button>
+    </div>
+
+    <p><strong>Produto:</strong> {{ ficha.produto_nome }}</p>
+    <p><strong>Peso Sacaria (kg):</strong> {{ ficha.produto_peso }}<br>
+       <strong>Nome da Formulação:</strong> {{ ficha.ficha_tecnica_nome }}</p>
+
+    <p><strong>Misturador (kg):</strong> {{ ficha.misturador }}<br>
+       <strong>Sacos por batida:</strong> 
+       {% if ficha.produto_peso and ficha.misturador %}
+         {{ '%.2f' | format(ficha.misturador / ficha.produto_peso) }}
+       {% else %}
+         -
+       {% endif %}
+    </p>
+
+    <h5 class="mt-4">Ingredientes</h5>
+    <table class="table table-bordered table-sm">
+        <thead>
+            <tr>
+                <th>Ingrediente</th>
+                <th>Percentual (%)</th>
+                <th>Quantidade (kg)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set total_kg = 0 %}
+            {% for ing in ingredientes %}
+            {% set quantidade = (ficha.misturador * ing.ficha_tecnica_percentual / 100) %}
+            {% set total_kg = total_kg + quantidade %}
+            <tr>
+                <td>{{ ing.produto_nome }}</td>
+                <td>{{ '%.4f' | format(ing.ficha_tecnica_percentual) }}</td>
+                <td>{{ '%.4f' | format(quantidade) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="fw-bold">
+                <td colspan="2" class="text-end">Total</td>
+                <td>{{ '%.4f' | format(total_kg) }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="autorizacao">
+        Autorizo o uso deste produto, ficha técnica e croqui do rótulo em anexo:<br>
+        {{ responsavel.nome }} {{ responsavel.ultimo_nome }} ({{ responsavel.numero_conselho }} {{ responsavel.conselho }})
+    </div>
+</body>
+</html>

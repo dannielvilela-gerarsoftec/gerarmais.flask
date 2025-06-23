@@ -69,10 +69,6 @@ app.register_blueprint(unidades_bp)
 def index():
     return render_template('index.html')
 
-@app.route('/cadastro_usuario')
-def cadastro_usuario():
-    return render_template('login/cadastro_usuario.html')
-
 @app.route('/precifica_produtos', methods=['GET', 'POST'])
 def precifica_produtos():
     if request.method == 'POST':
@@ -84,10 +80,6 @@ def precifica_produtos():
         return render_template('precifica_produtos.html', resultado=resultado)
 
     return render_template('precifica_produtos.html')
-
-@app.route('/pg_inicial')
-def pg_inicial():
-    return render_template('pg_inicial.html')
 
 # Código para rodar o app
 if __name__ == '__main__':

@@ -2,9 +2,23 @@
 {% block title %}Lista de Formulações{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Formulações de Produtos</h2>
-    <a href="{{ url_for('precifica_formulacao_bp.criar_formula') }}" class="btn btn-success mb-3">Nova Formulação</a>
+<!-- Breadcrumb + Botão Visualizar -->
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb bg-body-tertiary border rounded-3 px-3 py-2 d-flex align-items-center">
+    <li class="breadcrumb-item">
+      <a class="text-decoration-none" href="{{ url_for('main.pg_inicial') }}">Início</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">
+      Lista de Formulações
+    </li>
+    <li class="ms-auto">
+      <div class="d-flex gap-2">
+        <a href="{{ url_for('precifica_formulacao_bp.criar_formula') }}" class="btn btn-success mb-3">Nova Formulação</a>
+      </div>
+    </li>
+  </ol>
+</nav>
+
     <table id="tabela-formulacoes" class="table table-bordered table-hover align-middle">
         <thead>
             <tr>
@@ -13,7 +27,6 @@
                 <th>Ativa?</th>
                 <th>Misturador (Kg)</th>
                 <th>Peso Sacaria (Kg)</th>
-                <th>Ingredientes</th>
                 <th>Ações</th>
             </tr>
         </thead>
@@ -31,13 +44,6 @@
                 </td>
                 <td>{{ f.misturador | round(2) }}</td>
                 <td>{{ f.produto_peso | round(2) }}</td>
-                <td>
-                    <ul class="m-0 ps-3">
-                    {% for ing in f.ingredientes %}
-                        <li>{{ ing.produto_nome }}: {{ ing.ficha_tecnica_quantidade | round(2) }}%</li>
-                    {% endfor %}
-                    </ul>
-                </td>
                 <td>
                     <a href="{{ url_for('precifica_formulacao_bp.editar_formula', ficha_tecnicaID=f.ficha_tecnicaID) }}" class="btn btn-primary btn-sm">Editar/Visualizar</a>
                 </td>

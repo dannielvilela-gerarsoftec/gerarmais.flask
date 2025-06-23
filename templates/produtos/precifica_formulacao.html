@@ -2,6 +2,29 @@
 {% block title %}{{ "Editar" if edit_mode else "Nova" }} Formulação{% endblock %}
 
 {% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb bg-body-tertiary border rounded-3 px-3 py-2 d-flex align-items-center">
+    <li class="breadcrumb-item">
+      <a class="text-decoration-none" href="{{ url_for('main.pg_inicial') }}">Início</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a class="text-decoration-none" href="{{ url_for('lista_formulacoes_bp.lista_formulacoes') }}">Lista de Formulações</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">
+      {{ "Editar Formulação" if edit_mode else "Nova Formulação" }}
+    </li>
+  </ol>
+</nav>
+
+<!-- Botão Imprimir Ficha Técnica -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>{{ "Editar" if edit_mode else "Nova" }} Formulação</h3>
+  {% if edit_mode and ficha %}
+  <a href="{{ url_for('precifica_formulacao_bp.imprimir_ficha', ficha_tecnicaID=ficha.ficha_tecnicaID) }}" class="btn btn-outline-primary" target="_blank">
+    <i class="bi bi-printer"></i> Imprimir Ficha Técnica
+  </a>
+  {% endif %}
+</div>
 
 <div class="container mt-4">
     {% with messages = get_flashed_messages(with_categories=true) %}

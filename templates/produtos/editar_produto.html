@@ -12,15 +12,24 @@
 
   <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb bg-body-tertiary border rounded-3 px-3 py-2 d-flex align-items-center">
-      <li class="breadcrumb-item">
-        <a class="text-decoration-none" href="{{ url_for('pg_inicial') }}">Início</a>
-      </li>
-      <li class="breadcrumb-item">
+    <li class="breadcrumb-item">
+      <a class="text-decoration-none" href="{{ url_for('main.pg_inicial') }}">Início</a>
+    </li>
+   <li class="breadcrumb-item">
+      {% if produto and produto.produto_tipoID in [2, 8] %}
+        <a class="text-decoration-none" href="{{ url_for('ingredientes_bp.lista_ingredientes') }}">Ingredientes</a>
+      {% else %}
         <a class="text-decoration-none" href="{{ url_for('lista_produtos.lista_produtos') }}">Produtos</a>
-      </li>
-      <li class="breadcrumb-item active" aria-current="page">
-        {{ 'Editar' if produto else 'Cadastrar' }} Produto
-      </li>
+      {% endif %}
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">
+      {{ 'Editar' if produto else 'Cadastrar' }}
+      {% if produto and produto.produto_tipoID in [2, 8] %}
+        Ingrediente
+      {% else %}
+        Produto
+      {% endif %}
+    </li>
       <li class="ms-auto">
         <div class="d-flex gap-2">
           <button type="submit" class="btn btn-success btn-sm" form="form-editar-produto">Salvar</button>

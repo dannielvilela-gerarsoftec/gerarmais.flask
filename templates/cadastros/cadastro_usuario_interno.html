@@ -1,0 +1,61 @@
+{% extends "base_login.html" %}
+{% block title %}Cadastro de Usuário Interno{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4">Cadastrar Novo Usuário</h1>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-warning">
+          {% for message in messages %}
+            <p>{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('cadastro_usuario.cadastrar_usuario_interno') }}" novalidate>
+        <div class="form-group">
+            <label for="cargo_id">Cargo</label>
+            <select class="form-control" id="cargo_id" name="cargo_id" required>
+                {% for cargo in lista_cargos %}
+                    <option value="{{ cargo['cargoID'] }}">{{ cargo['cargo'] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="nome">Primeiro Nome</label>
+            <input type="text" class="form-control" id="nome" name="nome" maxlength="20" required>
+        </div>
+
+        <div class="form-group">
+            <label for="ultimo_nome">Último Nome</label>
+            <input type="text" class="form-control" id="ultimo_nome" name="ultimo_nome" maxlength="30" required>
+        </div>
+
+        <div class="form-group">
+            <label for="cpf">CPF</label>
+            <input type="text" class="form-control" id="cpf" name="cpf" maxlength="14" required>
+        </div>
+
+        <div class="form-group">
+            <label for="email">E-mail</label>
+            <input type="email" class="form-control" id="email" name="email" maxlength="50" required>
+        </div>
+
+        <div class="form-group">
+            <label for="senha">Senha</label>
+            <input type="password" class="form-control" id="senha" name="senha" minlength="8" required>
+        </div>
+
+        <div class="form-group">
+            <label for="confirmar_senha">Confirmar Senha</label>
+            <input type="password" class="form-control" id="confirmar_senha" name="confirmar_senha" minlength="8" required>
+        </div>
+
+        <button type="submit" class="btn btn-success mt-3">Cadastrar Usuário</button>
+    </form>
+</div>
+{% endblock %}

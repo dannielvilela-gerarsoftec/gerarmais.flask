@@ -23,6 +23,11 @@ $(document).ready(function () {
         tbody.append(`
           <tr>
             <td><a href="/editar_produto/editar_produto/${p.produtoID}">${p.produto_nome}</a></td>
+            <td>
+            ${p.produto_ativo == 1
+              ? '<span class="badge bg-success">Ativa</span>'
+              : '<span class="badge bg-danger">Inativa</span>'}
+          </td>
             <td>R$ ${p.preco_venda.toFixed(2)}</td>
             <td>${p.unidade || ''}</td>
             <td>${p.produto_peso || ''}</td>
@@ -48,7 +53,7 @@ window.abrirRelatorio = function () {
   const linhas = document.querySelectorAll("#tabela-produtos tbody tr");
   const now = new Date();
   const dataHora = now.toLocaleString('pt-BR');
-  const titulo = "Tabela de Preço";
+  const titulo = "Lista de Produtos";
 
   const tipo = $('#filtro-tipo option:selected').text().trim();
   const preco = $('#filtro-preco option:selected').text().trim();
@@ -92,22 +97,25 @@ window.abrirRelatorio = function () {
   `;
 
   linhas.forEach(tr => {
-    const tds = tr.querySelectorAll("td");
+    const status = tr.querySelector('td:nth-child(2)')?.textContent.trim();
+    if (status !== 'Ativa') return;
 
+
+    const tds = tr.querySelectorAll("td");
     const produto = tds[0]?.textContent || '';
-    const peso = tds[3]?.textContent || '';
-    const unidade = tds[2]?.textContent || '';
-    const fornecedor = tds[6]?.textContent || '';
-    const precoBase = parseFloat((tds[1]?.textContent || '0').replace('R$', '').replace(',', '.').trim()) || 0;
+    const peso = tds[4]?.textContent || '';
+    const unidade = tds[3]?.textContent || '';
+    const fornecedor = tds[7]?.textContent || '';
+    const precoBase = parseFloat((tds[2]?.textContent || '0').replace('R$', '').replace(',', '.').trim()) || 0;
 
     const calcPrazo = dias => precoBase * (1 + juros_diario * dias);
 
     const valorAvista = precoBase.toFixed(2);
     const valor28 = calcPrazo(28).toFixed(2);
     const valor56 = calcPrazo(56).toFixed(2);
-    const valor28_56 = calcPrazo(84).toFixed(2); // 28 + 56
+    const valor28_56 = calcPrazo(84).toFixed(2);
     const valor84 = calcPrazo(84).toFixed(2);
-    const valor3x = calcPrazo(90).toFixed(2); // 3x = 90 dias
+    const valor3x = calcPrazo(90).toFixed(2);
 
     conteudo += `
       <tr>

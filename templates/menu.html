@@ -50,11 +50,23 @@
       </a>
       <ul class="collapse nav flex-column submenu ps-4" id="submenu-configuracoes" data-bs-parent="#menu-items">
         <li><a href="{{ url_for('parametros_bp.parametros') }}" class="nav-link text-white small"><i class="bi bi-sliders me-2"></i> Parâmetros</a></li>
-        <li><a href="#" class="nav-link text-white small"><i class="bi bi-person-plus me-2"></i> Novo Usuário</a></li>
+        <li><a href="{{ url_for('cadastro_usuario.cadastrar_usuario_interno') }}" class="nav-link text-white small"><i class="bi bi-person-plus me-2"></i> Novo Usuário</a></li>
         <li><a href="#" class="nav-link text-white small"><i class="bi bi-credit-card me-2"></i> Área Pagamento</a></li>
       </ul>
     </li>
 
+
+  </ul>
+
+  <!-- Perfil com Dropdown -->
+  <div class="dropdown mt-auto p-3 border-top">
+    <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+      <img src="{{ session.get('usuario_foto', url_for('static', filename='img/avatar_padrao.png')) }}" alt="Avatar" width="30" height="30" class="rounded-circle me-2" />
+      <span class="menu-label">{{ session.get('nome_usuario', '') }} {{ session.get('sobrenome_usuario', '') }}</span>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userDropdown">
+      <li><a class="dropdown-item" href="#">Perfil</a></li>
+      <li><a class="dropdown-item" href="#">Configurações</a></li>
     <!-- Logout -->
     <li class="nav-item mt-3">
       <a href="#" class="nav-link text-white d-flex align-items-center" data-bs-toggle="tooltip" data-bs-placement="right" title="Logout">
@@ -62,19 +74,6 @@
         <span class="menu-label ms-2">Logout</span>
       </a>
     </li>
-  </ul>
-
-  <!-- Perfil com Dropdown -->
-  <div class="dropdown mt-auto p-3 border-top">
-    <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-      <img src="https://github.com/mdo.png" alt="Avatar" width="30" height="30" class="rounded-circle me-2" />
-      <span class="menu-label">Usuário</span>
-    </a>
-    <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="userDropdown">
-      <li><a class="dropdown-item" href="#">Perfil</a></li>
-      <li><a class="dropdown-item" href="#">Configurações</a></li>
-      <li><hr class="dropdown-divider"></li>
-      <li><a class="dropdown-item" href="#">Logout</a></li>
     </ul>
   </div>
 </aside>

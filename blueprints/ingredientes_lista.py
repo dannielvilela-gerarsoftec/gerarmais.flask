@@ -31,7 +31,7 @@ def lista_ingredientes():
         SELECT p.*, u.unidade
         FROM produtos p
         LEFT JOIN unidades u ON u.unidadeID = p.produto_unidadeID
-        WHERE p.produto_tipoID IN (2, 3)
+        WHERE p.produto_tipoID IN (2, 3, 8)
         ORDER BY p.produto_nome
     """)
     ingredientes = cursor.fetchall()

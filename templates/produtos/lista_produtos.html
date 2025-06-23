@@ -6,7 +6,7 @@
 <nav aria-label="breadcrumb" class="mb-4">
   <ol class="breadcrumb bg-body-tertiary border rounded-3 px-3 py-2 d-flex align-items-center">
     <li class="breadcrumb-item">
-      <a class="text-decoration-none" href="{{ url_for('pg_inicial') }}">Início</a>
+      <a class="text-decoration-none" href="{{ url_for('main.pg_inicial') }}">Início</a>
     </li>
     <li class="breadcrumb-item active" aria-current="page">
       Lista de Produto
@@ -55,6 +55,7 @@
     <thead>
       <tr>
         <th>Produto</th>
+        <th>Ativo?</th>
         <th>Preço (R$)</th>
         <th>Unidade</th>
         <th>Peso (kg)</th>

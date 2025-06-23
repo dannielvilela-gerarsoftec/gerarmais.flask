@@ -2,6 +2,7 @@ from flask import Blueprint, request, render_template, redirect, url_for, flash,
 import mysql.connector
 from werkzeug.security import check_password_hash
 from conexao import get_db_connection
+from blueprints.login.main import login_required
 
 login_bp = Blueprint('login', __name__)
 
@@ -33,6 +34,12 @@ def login():
                     plano_ativo = empresa_info['ativa']
                     session['cargo'] = cargo
                     session['plano_ativo'] = plano_ativo
+                    session['user_id'] = user['usuarioID']
+                    session['empresa_id'] = user.get('empresa')
+                    session['nome_usuario'] = user.get('nome')
+                    session['sobrenome_usuario'] = user.get('ultimo_nome')
+                    session['usuario_email'] = user['email']
+                    session['usuario_foto'] = user.get('foto')
                     flash('Login bem-sucedido!', 'success')
 
                     # Redireciona para a página login/pg_inicial.html
@@ -54,12 +61,12 @@ def login():
 
 @login_bp.route('/logout')
 def logout():
-    session.pop('cargo', None)
-    session.pop('plano_ativo', None)
+    session.clear()  # Limpa toda a sessão!
     flash('Você saiu com sucesso!', 'success')
-    return redirect(url_for('login'))
+    return redirect(url_for('login.login'))
 
 # Nova rota para a página inicial
 @login_bp.route('/pg_inicial')
+@login_required
 def pg_inicial():
     return render_template('login/pg_inicial.html')

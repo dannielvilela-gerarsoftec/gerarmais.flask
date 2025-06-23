@@ -146,12 +146,10 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
             idx += 1
 
         # Cálculo de custos dos ingredientes
-        custo_oportunidade = 0.0
-        if categoria_produto_principal:
-            cursor.execute("SELECT custo_oportunidade FROM parametros WHERE categoriaID=%s", (categoria_produto_principal,))
-            param = cursor.fetchone()
-            if param and param['custo_oportunidade'] is not None:
-                custo_oportunidade = float(param['custo_oportunidade'])
+        cursor.execute("SELECT custo_oportunidade FROM parametros WHERE categoriaID=0")
+        param = cursor.fetchone()
+        custo_oportunidade = float(param['custo_oportunidade']) if param and param['custo_oportunidade'] is not None else 0.0
+
 
         cursor.execute("""
             SELECT fi.produtoID, fi.ficha_tecnica_percentual, fi.ficha_tecnica_quantidade, 
@@ -204,7 +202,7 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
 
         # Custo de produção (tipoID == 3)
         custo_producao = 0
-        if produto_tipoID == 3:
+        if produto_tipoID in (3, 4):
             cursor.execute("SELECT producao FROM parametros WHERE categoriaID=%s", (categoria_produto_principal or 1,))
             param = cursor.fetchone()
             if param and param.get("producao") is not None:
@@ -238,7 +236,7 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT produto_tipoID, produto_categoriaID, produto_peso FROM produtos WHERE produtoID=%s", (ficha["produtoID"],))
         prod_info = cursor.fetchone()
-        if prod_info and int(prod_info["produto_tipoID"]) == 3:
+        if prod_info and int(prod_info["produto_tipoID"]) in (3, 4):
             exibe_custo_producao = True
             cursor.execute("SELECT producao FROM parametros WHERE categoriaID=%s", (prod_info["produto_categoriaID"] or 1,))
             param = cursor.fetchone()
@@ -326,3 +324,47 @@ def ptax():
         return jsonify({'ptax': ptax_val, 'data': ptax_data})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@precifica_formulacao_bp.route('/formulacao/<int:ficha_tecnicaID>/imprimir')
+def imprimir_ficha(ficha_tecnicaID):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # Buscar dados da ficha técnica e do produto
+    cursor.execute("""
+        SELECT f.ficha_tecnica_nome, f.misturador, f.produtoID,
+               p.produto_nome, p.produto_peso
+        FROM ficha_tecnica f
+        JOIN produtos p ON f.produtoID = p.produtoID
+        WHERE f.ficha_tecnicaID = %s
+    """, (ficha_tecnicaID,))
+    ficha = cursor.fetchone()
+
+    # Buscar ingredientes da formulação
+    cursor.execute("""
+        SELECT fi.ficha_tecnica_percentual, p.produto_nome
+        FROM ficha_tecnica_itens fi
+        JOIN produtos p ON fi.produtoID = p.produtoID
+        WHERE fi.ficha_tecnicaID = %s
+    """, (ficha_tecnicaID,))
+    ingredientes = cursor.fetchall()
+
+    # Buscar dados do responsável (primeiro usuário ativo encontrado)
+    cursor.execute("""
+        SELECT nome, ultimo_nome, numero_conselho, conselho
+        FROM usuarios
+        WHERE cargo = 4
+        ORDER BY usuarioID ASC
+        LIMIT 1
+    """)
+    responsavel = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        'produtos/ficha_tecnica_impressao.html',
+        ficha=ficha,
+        ingredientes=ingredientes,
+        responsavel=responsavel
+    )
