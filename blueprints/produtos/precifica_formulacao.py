@@ -4,6 +4,13 @@ from datetime import datetime, timedelta
 import requests
 
 precifica_formulacao_bp = Blueprint('precifica_formulacao_bp', __name__)
+def get_opcoes_cruzadas():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT cont_cruzadaID, grupo, descricao FROM cont_cruzada ORDER BY grupo, descricao")
+    resultado = cursor.fetchall()
+    conn.close()
+    return resultado
 
 def get_ptax_dia_anterior():
     hoje = datetime.now()
@@ -59,8 +66,11 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
         """, (ficha_tecnicaID,))
         ficha = cursor.fetchone()
         cursor.execute("""
-            SELECT fi.produtoID, fi.ficha_tecnica_percentual, fi.ficha_tecnica_quantidade
+            SELECT fi.produtoID, fi.ficha_tecnica_percentual, fi.ficha_tecnica_quantidade, 
+                p.produto_custo, p.produto_custo_moeda, p.produto_custo_dolar,
+                p.produto_perdas, p.produto_tipoID, p.produto_peso
             FROM ficha_tecnica_itens fi
+            JOIN produtos p ON fi.produtoID = p.produtoID
             WHERE fi.ficha_tecnicaID = %s
             ORDER BY fi.ficha_tecnicaID
         """, (ficha_tecnicaID,))
@@ -78,6 +88,8 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
         ficha_tecnica_nome = request.form.get('ficha_tecnica_nome')
         ativo = 1 if request.form.get('ativo') == 'on' else 0
         misturador = float(request.form.get('misturador') or 0)
+        cont_cruzadaID = request.form.get("cont_cruzadaID") or None
+
 
         # Busca informações do produto para cálculo do peso_sacaria
         cursor.execute("SELECT produto_peso, produto_categoriaID, produto_unidadeID, produto_tipoID FROM produtos WHERE produtoID = %s", (produtoID,))
@@ -108,6 +120,8 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
                     produtoID=%s, ficha_tecnica_nome=%s, ativo=%s, misturador=%s
                 WHERE ficha_tecnicaID=%s
             """, (produtoID, ficha_tecnica_nome, ativo, misturador, ficha_tecnicaID))
+
+            cursor.execute("UPDATE produtos SET cont_cruzadaID=%s WHERE produtoID=%s", (cont_cruzadaID, produtoID))
             cursor.execute("DELETE FROM ficha_tecnica_itens WHERE ficha_tecnicaID=%s", (ficha_tecnicaID,))
             cursor.execute("DELETE FROM ficha_tecnica_extras WHERE ficha_tecnicaID=%s", (ficha_tecnicaID,))
         else:
@@ -116,6 +130,7 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
                 VALUES (%s, %s, %s, %s)
             """, (produtoID, ficha_tecnica_nome, ativo, misturador))
             ficha_tecnicaID = cursor.lastrowid
+            cursor.execute("UPDATE produtos SET cont_cruzadaID=%s WHERE produtoID=%s", (cont_cruzadaID, produtoID))
 
         # Salva ingredientes (percentual e peso no saco)
         idx = 0
@@ -150,13 +165,13 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
         param = cursor.fetchone()
         custo_oportunidade = float(param['custo_oportunidade']) if param and param['custo_oportunidade'] is not None else 0.0
 
-
         cursor.execute("""
             SELECT fi.produtoID, fi.ficha_tecnica_percentual, fi.ficha_tecnica_quantidade, 
-                   p.produto_custo, p.produto_custo_moeda, p.produto_custo_dolar, p.produto_perdas
+                p.produto_custo, p.produto_custo_moeda, p.produto_custo_dolar, p.produto_perdas, p.produto_tipoID, p.produto_peso
             FROM ficha_tecnica_itens fi
-            JOIN produtos p ON p.produtoID=fi.produtoID
-            WHERE fi.ficha_tecnicaID=%s
+            JOIN produtos p ON p.produtoID = fi.produtoID
+            WHERE fi.ficha_tecnicaID = %s
+            ORDER BY fi.ficha_tecnicaID
         """, (ficha_tecnicaID,))
         ingr_custo = cursor.fetchall()
 
@@ -181,6 +196,12 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
                 convertido = custo_dolar * ptax_val
                 custo_final = max(convertido, custo)
 
+            # Se for tipo 3 (semi-acabado), converte de R$/saco para R$/kg
+            if int(row.get("produto_tipoID") or 0) == 3:
+                peso_produto = float(row.get("produto_peso") or 0)
+                if peso_produto > 0:
+                    custo_final = custo_final / peso_produto
+
             if custo_oportunidade and custo_oportunidade != 0:
                 custo_final += (custo_final * custo_oportunidade)
 
@@ -193,10 +214,15 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
             WHERE fe.ficha_tecnicaID=%s
         """, (ficha_tecnicaID,))
         extras_custo = cursor.fetchall()
-        custo_extras = sum([
-            float(row['extra_quantidade']) * float(row['produto_custo'])
-            for row in extras_custo
-        ])
+        custo_extras = 0
+        for row in extras_custo:
+            quantidade = float(row['extra_quantidade']) or 0
+            custo = float(row['produto_custo']) or 0
+
+            if custo_oportunidade and custo_oportunidade != 0:
+                custo += custo * custo_oportunidade
+
+            custo_extras += quantidade * custo
 
         custo_total = custo_ingredientes + custo_extras
 
@@ -234,8 +260,21 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
     exibe_custo_producao = False
     if ficha and ficha.get("produtoID"):
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT produto_tipoID, produto_categoriaID, produto_peso FROM produtos WHERE produtoID=%s", (ficha["produtoID"],))
+        cursor.execute("""
+            SELECT produto_tipoID, produto_categoriaID, produto_peso, cont_cruzadaID 
+            FROM produtos WHERE produtoID=%s
+        """, (ficha["produtoID"],))
         prod_info = cursor.fetchone()
+
+        if prod_info:
+            ficha["cont_cruzadaID"] = prod_info.get("cont_cruzadaID")
+            if int(prod_info["produto_tipoID"]) in (3, 4):
+                exibe_custo_producao = True
+                cursor.execute("SELECT producao FROM parametros WHERE categoriaID=%s", (prod_info["produto_categoriaID"] or 1,))
+                param = cursor.fetchone()
+                if param and param.get("producao") is not None:
+                    producao = float(param["producao"])
+                    custo_producao = (producao / 1000) * float(prod_info.get("produto_peso") or 0)
         if prod_info and int(prod_info["produto_tipoID"]) in (3, 4):
             exibe_custo_producao = True
             cursor.execute("SELECT producao FROM parametros WHERE categoriaID=%s", (prod_info["produto_categoriaID"] or 1,))
@@ -251,6 +290,8 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
                 produto_categoriaID = p["produto_categoriaID"]
     elif len(produtos) > 0:
         produto_categoriaID = produtos[0]["produto_categoriaID"]
+    
+    opcoes_cruzadas = get_opcoes_cruzadas()
 
     cursor.close()
     conn.close()
@@ -264,7 +305,9 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
         extras_ficha=extras_ficha,
         edit_mode=edit_mode,
         produto_categoriaID=produto_categoriaID,
-        custo_producao=custo_producao if exibe_custo_producao else 0
+        custo_producao=custo_producao if exibe_custo_producao else 0,
+        opcoes_cruzadas=opcoes_cruzadas
+
     )
 
 # ...demais endpoints auxiliares como produto_peso, produto_custo, produto_perda, etc. permanecem iguais.
@@ -284,17 +327,32 @@ def produto_custo(produtoID):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute(
-        "SELECT produto_custo, produto_custo_moeda, produto_custo_dolar FROM produtos WHERE produtoID = %s",
+        """
+        SELECT produto_custo, produto_custo_moeda, produto_custo_dolar, 
+               produto_tipoID, produto_peso
+        FROM produtos 
+        WHERE produtoID = %s
+        """,
         (produtoID,))
     valor = cursor.fetchone()
     cursor.close()
     conn.close()
+
     if not valor:
-        return jsonify({'produto_custo': 0, 'produto_custo_moeda': 'R', 'produto_custo_dolar': 0})
+        return jsonify({
+            'produto_custo': 0,
+            'produto_custo_moeda': 'R',
+            'produto_custo_dolar': 0,
+            'produto_tipoID': 0,
+            'produto_peso': 0
+        })
+
     return jsonify({
         'produto_custo': float(valor['produto_custo']) if valor['produto_custo'] else 0,
         'produto_custo_moeda': valor.get('produto_custo_moeda') or 'R',
         'produto_custo_dolar': float(valor['produto_custo_dolar']) if valor.get('produto_custo_dolar') else 0,
+        'produto_tipoID': valor.get('produto_tipoID') or 0,
+        'produto_peso': float(valor.get('produto_peso') or 0),
     })
 
 @precifica_formulacao_bp.route('/produtos/perda/<int:produtoID>')
@@ -333,12 +391,20 @@ def imprimir_ficha(ficha_tecnicaID):
     # Buscar dados da ficha técnica e do produto
     cursor.execute("""
         SELECT f.ficha_tecnica_nome, f.misturador, f.produtoID,
-               p.produto_nome, p.produto_peso
+            p.produto_nome, p.produto_peso, p.cont_cruzadaID
         FROM ficha_tecnica f
         JOIN produtos p ON f.produtoID = p.produtoID
         WHERE f.ficha_tecnicaID = %s
     """, (ficha_tecnicaID,))
     ficha = cursor.fetchone()
+
+    # Buscar grupo e descrição da cont_cruzada, se houver
+    cont_cruzada = None
+    if ficha and ficha.get("cont_cruzadaID"):
+        cursor.execute("""
+            SELECT grupo, descricao FROM cont_cruzada WHERE cont_cruzadaID = %s
+        """, (ficha["cont_cruzadaID"],))
+        cont_cruzada = cursor.fetchone()
 
     # Buscar ingredientes da formulação
     cursor.execute("""
@@ -366,5 +432,132 @@ def imprimir_ficha(ficha_tecnicaID):
         'produtos/ficha_tecnica_impressao.html',
         ficha=ficha,
         ingredientes=ingredientes,
-        responsavel=responsavel
+        responsavel=responsavel,
+        cont_cruzada=cont_cruzada
     )
+@precifica_formulacao_bp.route('/excluir/<int:ficha_tecnicaID>', methods=['POST'])
+def excluir_formula(ficha_tecnicaID):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # Buscar o produtoID vinculado à ficha
+        cursor.execute("SELECT produtoID FROM ficha_tecnica WHERE ficha_tecnicaID = %s", (ficha_tecnicaID,))
+        result = cursor.fetchone()
+        produtoID = result['produtoID'] if result else None
+
+        if not produtoID:
+            flash("Produto vinculado à formulação não encontrado.", "danger")
+            return redirect(url_for('lista_formulacoes_bp.lista_formulacoes'))
+
+        # Verificar se a ficha está sendo usada em outras formulações como ingrediente ou extra
+        cursor.execute("""
+            SELECT fi.ficha_tecnicaID, ft.ficha_tecnica_nome 
+            FROM ficha_tecnica_itens fi
+            JOIN ficha_tecnica ft ON fi.ficha_tecnicaID = ft.ficha_tecnicaID
+            WHERE fi.produtoID = %s AND fi.ficha_tecnicaID != %s
+        """, (produtoID, ficha_tecnicaID))
+        usado_como_ingrediente = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT fe.ficha_tecnicaID, ft.ficha_tecnica_nome 
+            FROM ficha_tecnica_extras fe
+            JOIN ficha_tecnica ft ON fe.ficha_tecnicaID = ft.ficha_tecnicaID
+            WHERE fe.produtoID = %s AND fe.ficha_tecnicaID != %s
+        """, (produtoID, ficha_tecnicaID))
+        usado_como_extra = cursor.fetchall()
+
+        if usado_como_ingrediente or usado_como_extra:
+            fichas_usando = usado_como_ingrediente + usado_como_extra
+            nomes = ", ".join([f['ficha_tecnica_nome'] for f in fichas_usando])
+            flash(f"Não é possível excluir. Este produto é utilizado em outras formulações: {nomes}", "warning")
+            return redirect(url_for('lista_formulacoes_bp.lista_formulacoes'))
+
+        # Excluir apenas a ficha e seus itens vinculados
+        cursor.execute("DELETE FROM ficha_tecnica_itens WHERE ficha_tecnicaID = %s", (ficha_tecnicaID,))
+        cursor.execute("DELETE FROM ficha_tecnica_extras WHERE ficha_tecnicaID = %s", (ficha_tecnicaID,))
+        cursor.execute("DELETE FROM ficha_tecnica WHERE ficha_tecnicaID = %s", (ficha_tecnicaID,))
+
+        conn.commit()
+        flash("Formulação excluída com sucesso.", "success")
+
+    except Exception as e:
+        conn.rollback()
+        flash("Erro ao excluir formulação: " + str(e), "danger")
+
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('lista_formulacoes_bp.lista_formulacoes'))
+
+@precifica_formulacao_bp.route('/formulacao/<int:ficha_tecnicaID>/clonar', methods=['GET'])
+def clonar_formula(ficha_tecnicaID):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # Buscar dados da ficha técnica original
+        cursor.execute("""
+            SELECT produtoID, ficha_tecnica_nome, ativo, misturador
+            FROM ficha_tecnica
+            WHERE ficha_tecnicaID = %s
+        """, (ficha_tecnicaID,))
+        ficha_original = cursor.fetchone()
+
+        if not ficha_original:
+            flash("Ficha técnica não encontrada.", "danger")
+            return redirect(url_for('lista_formulacoes_bp.lista_formulacoes'))
+
+        # Criar nova ficha com nome ajustado
+        novo_nome = f"{ficha_original['ficha_tecnica_nome']} - Cópia"
+        cursor.execute("""
+            INSERT INTO ficha_tecnica (produtoID, ficha_tecnica_nome, ativo, misturador)
+            VALUES (%s, %s, %s, %s)
+        """, (
+            ficha_original['produtoID'],
+            novo_nome,
+            ficha_original['ativo'],
+            ficha_original['misturador']
+        ))
+        nova_fichaID = cursor.lastrowid
+
+        # Clonar os ingredientes
+        cursor.execute("""
+            SELECT produtoID, ficha_tecnica_percentual, ficha_tecnica_quantidade
+            FROM ficha_tecnica_itens
+            WHERE ficha_tecnicaID = %s
+        """, (ficha_tecnicaID,))
+        ingredientes = cursor.fetchall()
+
+        for ing in ingredientes:
+            cursor.execute("""
+                INSERT INTO ficha_tecnica_itens (ficha_tecnicaID, produtoID, ficha_tecnica_percentual, ficha_tecnica_quantidade)
+                VALUES (%s, %s, %s, %s)
+            """, (nova_fichaID, ing['produtoID'], ing['ficha_tecnica_percentual'], ing['ficha_tecnica_quantidade']))
+
+        # Clonar os extras
+        cursor.execute("""
+            SELECT produtoID, extra_quantidade
+            FROM ficha_tecnica_extras
+            WHERE ficha_tecnicaID = %s
+        """, (ficha_tecnicaID,))
+        extras = cursor.fetchall()
+
+        for ex in extras:
+            cursor.execute("""
+                INSERT INTO ficha_tecnica_extras (ficha_tecnicaID, produtoID, extra_quantidade)
+                VALUES (%s, %s, %s)
+            """, (nova_fichaID, ex['produtoID'], ex['extra_quantidade']))
+
+        conn.commit()
+        flash("Formulação clonada com sucesso!", "success")
+        return redirect(url_for('precifica_formulacao_bp.editar_formula', ficha_tecnicaID=nova_fichaID))
+
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao clonar formulação: {e}", "danger")
+        return redirect(url_for('lista_formulacoes_bp.lista_formulacoes'))
+    finally:
+        cursor.close()
+        conn.close()

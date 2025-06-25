@@ -27,51 +27,79 @@
 </head>
 <body>
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>Ficha Técnica</h1>
+        <h5 class="text-center">Ficha Técnica</h5>
         <button class="btn btn-primary no-print" onclick="window.print()">
             <i class="bi bi-printer"></i> Imprimir
         </button>
     </div>
+    <table class="table table-sm">
+    <thead>
+        <tr class="table-active text-center">
+        <th colspan="3">
+            <h1 style="text-transform: uppercase;" class="text-center m-0">
+            {{ ficha.produto_nome }}
+            </h1>
+        </th>
+        </tr>
+    </thead>
+    </table>
+        <table class="table table-bordered table-sm">
+            <thead>
+                <tr style="text-transform: uppercase;"class="text-center">
+                    <th colspan="3"><strong>Descrição:</strong> {{ ficha.ficha_tecnica_nome }}</th>
+                </tr>
+                <tr class="text-center">
+                    <th><strong>Misturador (kg):</strong> {{ '%.2f' | format(ficha.misturador) }}</th>
+                    <th><strong>Peso Sacaria (kg):</strong> {{ ficha.produto_peso }}</th>
+                    <th>
+                        <strong>Sacos por batida:</strong> 
+                        {% if ficha.produto_peso and ficha.misturador %}
+                            {{ '%.2f' | format(ficha.misturador / ficha.produto_peso) }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </th>
+                </tr>
+            </thead>
+        </table>
 
-    <p><strong>Produto:</strong> {{ ficha.produto_nome }}</p>
-    <p><strong>Peso Sacaria (kg):</strong> {{ ficha.produto_peso }}<br>
-       <strong>Nome da Formulação:</strong> {{ ficha.ficha_tecnica_nome }}</p>
+        <table class="table table-active table-sm">
+            <thead>
+                {% if cont_cruzada %}
+                <tr class="text-center">
+                    <th colspan="3" style="text-transform: uppercase;">
+                        <strong>Grupo de Contaminação Cruzada:</strong><br> {{ cont_cruzada.grupo }} - {{ cont_cruzada.descricao }}
+                    </th>
+                </tr>
+                {% endif %}
+            </thead>
+        </table>
 
-    <p><strong>Misturador (kg):</strong> {{ ficha.misturador }}<br>
-       <strong>Sacos por batida:</strong> 
-       {% if ficha.produto_peso and ficha.misturador %}
-         {{ '%.2f' | format(ficha.misturador / ficha.produto_peso) }}
-       {% else %}
-         -
-       {% endif %}
-    </p>
 
-    <h5 class="mt-4">Ingredientes</h5>
-    <table class="table table-bordered table-sm">
-        <thead>
-            <tr>
-                <th>Ingrediente</th>
-                <th>Percentual (%)</th>
-                <th>Quantidade (kg)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% set total_kg = 0 %}
-            {% for ing in ingredientes %}
+<table class="table table-striped table-bordered table-sm">
+    <thead>
+        <tr style="text-transform: uppercase;" class="text-center">
+            <th>Ingrediente</th>
+            <th>Quantidade (kg)</th>
+        </tr>
+    </thead>
+    <tbody style="text-transform: uppercase;" class="text-center table-group-divider">
+        {% set total = namespace(valor=0) %}
+        {% for ing in ingredientes %}
             {% set quantidade = (ficha.misturador * ing.ficha_tecnica_percentual / 100) %}
-            {% set total_kg = total_kg + quantidade %}
+            {% set total.valor = total.valor + quantidade %}
             <tr>
                 <td>{{ ing.produto_nome }}</td>
-                <td>{{ '%.4f' | format(ing.ficha_tecnica_percentual) }}</td>
                 <td>{{ '%.4f' | format(quantidade) }}</td>
             </tr>
-            {% endfor %}
-            <tr class="fw-bold">
-                <td colspan="2" class="text-end">Total</td>
-                <td>{{ '%.4f' | format(total_kg) }}</td>
-            </tr>
-        </tbody>
-    </table>
+        {% endfor %}
+        <tr class="fw-bold">
+            <td class="text-end">Total</td>
+            <td>{{ '%.4f' | format(total.valor) }}</td>
+        </tr>
+    </tbody>
+</table>
+
 
     <div class="autorizacao">
         Autorizo o uso deste produto, ficha técnica e croqui do rótulo em anexo:<br>

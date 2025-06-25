@@ -8,10 +8,22 @@
       <a class="text-decoration-none" href="{{ url_for('main.pg_inicial') }}">Início</a>
     </li>
     <li class="breadcrumb-item">
-      <a class="text-decoration-none" href="{{ url_for('lista_formulacoes_bp.lista_formulacoes') }}">Lista de Formulações</a>
+      <a class="text-decoration-none" href="{{ url_for('lista_formulacoes_bp.lista_formulacoes') }}">Formulações</a>
     </li>
     <li class="breadcrumb-item active" aria-current="page">
-      {{ "Editar Formulação" if edit_mode else "Nova Formulação" }}
+      {{ 'Editar' if edit_mode else 'Nova' }} Formulação
+    </li>
+    <li class="ms-auto">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success btn-sm" form="form-formulacao">Salvar</button>
+        {% if ficha and not clonar %}
+          <a href="{{ url_for('precifica_formulacao_bp.clonar_formula', ficha_tecnicaID=ficha.ficha_tecnicaID) }}" class="btn btn-warning btn-sm">Clonar</a>
+          <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalExcluir">Excluir</button>
+          <a href="{{ url_for('lista_formulacoes_bp.lista_formulacoes') }}" class="btn btn-secondary btn-sm">Voltar</a>
+        {% else %}
+          <a href="{{ url_for('lista_formulacoes_bp.lista_formulacoes') }}" class="btn btn-secondary btn-sm">Voltar</a>
+        {% endif %}
+      </div>
     </li>
   </ol>
 </nav>
@@ -37,7 +49,6 @@
     {% endif %}
     {% endwith %}
 
-    <h3>{{ "Editar" if edit_mode else "Nova" }} Formulação</h3>
     <form method="POST" id="form-formulacao" autocomplete="off">
 
         <div class="row mb-2">
@@ -83,21 +94,37 @@
                 <input type="number" id="sacos_batida" class="form-control" readonly>
             </div>
         </div>
+        <div class="row mb-2">
+            <div class="col">
+                <label for="cont_cruzadaID">Grupo</label>
+                <select name="cont_cruzadaID" id="cont_cruzadaID" class="form-select" required>
+                    <option value="">Selecione uma opção</option>
+                    {% for opcao in opcoes_cruzadas %}
+                        <option value="{{ opcao.cont_cruzadaID }}"
+                            {% if ficha.cont_cruzadaID == opcao.cont_cruzadaID %}selected{% endif %}>
+                            {{ opcao.grupo }} - {{ opcao.descricao }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
 
         <div id="percentual-total-alerta" class="alert alert-warning d-none">
             A soma dos percentuais deve ser 100%. Soma atual: <span id="percentual-total">0</span>
         </div>
 
-        <h5 class="mt-4">Ingredientes</h5>
+        <h5 class="mt-4">Formulação</h5>
         <table class="table" id="tabela-ingredientes">
             <thead>
                 <tr>
                     <th></th>
-                    <th>Ingrediente</th>
-                    <th>Percentual (%)</th>
-                    <th>Peso no Saco (kg)</th>
-                    <th>Perdas consideradas (kg)</th>
-                    <th>R$ no Saco</th>
+                    <th class="text-center" style="width: 30%;">Ingrediente</th>
+                    <th class="text-center" style="width: 15%;">Percentual<br>(%)</th>
+                    <th class="text-center" style="width: 10%;">Quant.<br>no Misturador<br>(kg)</th>
+                    <th class="text-center" style="width: 10%;">Quant.<br>no Saco<br>(kg)</th>
+                    <th class="text-center" style="width: 10%;">Perdas<br>consideradas<br>(kg)</th>
+                    <th class="text-center" style="width: 10%;">Custo<br>MP<br>(R$)</th>
+                    <th class="text-center" style="width: 10%;">Custo<br>no Saco<br>(R$)</th>
                 </tr>
             </thead>
             <tbody>
@@ -109,23 +136,31 @@
                                 <i class="bi bi-trash-fill"></i>
                             </button>
                         </td>
-                        <td>
-                            <select name="ingrediente_{{ loop.index0 }}" class="form-select ingrediente-sel" required>
+                        <td class="text-center">
+                            <select name="ingrediente_{{ loop.index0 }}" class="form-select ingrediente-sel text-center" required>
                                 {% for i in ingredientes %}
-                                    <option value="{{ i.produtoID }}" {% if i.produtoID == ing.produtoID %}selected{% endif %}>
+                                    <option class="text-center" value="{{ i.produtoID }}" {% if i.produtoID == ing.produtoID %}selected{% endif %}>
                                         {{ i.produto_nome }}
                                     </option>
                                 {% endfor %}
                             </select>
                         </td>
-                        <td>
+                        <td class="text-center">
                             <input type="number" name="percentual_{{ loop.index0 }}" 
-                                class="form-control percentual" min="0" max="100" step="0.0001" required
+                                class="form-control percentual text-center" min="0" max="100" step="0.0001" required
                                 value="{{ ing.ficha_tecnica_percentual }}">
                         </td>
-                        <td class="peso-saco">{% if ing.ficha_tecnica_quantidade is defined %}{{ ing.ficha_tecnica_quantidade|round(4) }}{% else %}0{% endif %}</td>
-                        <td class="perda-kg">0</td>
-                        <td class="custo-saco">0</td>
+                        <td class="peso-misturador text-center">0</td>
+                        <td class="peso-saco text-center">
+                            {% if ing.ficha_tecnica_quantidade is defined %}
+                                {{ ing.ficha_tecnica_quantidade|round(4) }}
+                            {% else %}
+                                0
+                            {% endif %}
+                        </td>
+                        <td class="perda-kg text-center">0</td>
+                        <td class="custo-mp text-center">0</td>
+                        <td class="custo-saco text-center">0</td>
                     </tr>
                     {% endfor %}
                 {% else %}
@@ -135,24 +170,28 @@
                                 <i class="bi bi-trash-fill"></i>
                             </button>
                         </td>
-                        <td>
+                        <td class="text-center">
                             <select name="ingrediente_0" class="form-select ingrediente-sel" required>
                                 {% for i in ingredientes %}
                                     <option value="{{ i.produtoID }}">{{ i.produto_nome }}</option>
                                 {% endfor %}
                             </select>
                         </td>
-                        <td>
+                        <td class="text-center">
                             <input type="number" name="percentual_0" class="form-control percentual"
-                                   min="0" max="100" step="0.0001" required>
+                                min="0" max="100" step="0.0001" required>
                         </td>
-                        <td class="peso-saco">0</td>
-                        <td class="perda-kg">0</td>
-                        <td class="custo-saco">0</td>
+                        <td class="peso-misturador text-center">0</td>
+                        <td class="peso-saco text-center">0</td>
+                        <td class="perda-kg text-center">0</td>
+                        <td class="custo-mp text-center">0</td>
+                        <td class="custo-saco text-center">0</td>
                     </tr>
                 {% endif %}
             </tbody>
         </table>
+
+
         <button type="button" class="btn btn-secondary" onclick="adicionarLinha()">Adicionar Ingrediente</button>
         <div class="text-end my-2">
             <b>Total ingredientes: R$ <span id="total-custo-ing">0,00</span></b>
@@ -164,10 +203,10 @@
             <thead>
                 <tr>
                     <th></th>
-                    <th>Material</th>
-                    <th>Quantidade</th>
-                    <th>Valor unit. (R$)</th>
-                    <th>Total (R$)</th>
+                    <th class = "text-center">Material</th>
+                    <th class = "text-center">Quantidade</th>
+                    <th class = "text-center">Valor unit. (R$)</th>
+                    <th class = "text-center">Total (R$)</th>
                 </tr>
             </thead>
             <tbody>
@@ -179,7 +218,7 @@
                         </button>
                     </td>
                     <td>
-                        <select name="extra_produto_{{ loop.index0 }}" class="form-select extra-sel" required>
+                        <select name="extra_produto_{{ loop.index0 }}" class="text-center form-select extra-sel" required>
                             {% for i in extras %}
                                 <option value="{{ i.produtoID }}" data-valor="{{ i.produto_custo }}" {% if extra.produtoID == i.produtoID %}selected{% endif %}>
                                     {{ i.produto_nome }}
@@ -192,11 +231,11 @@
                                class="form-control extra-quantidade" step="0.001" min="0"
                                value="{{ extra.extra_quantidade }}" required>
                     </td>
-                    <td>
+                    <td class="text-center">
                         <span class="valor-unitario"></span>
                     </td>
-                    <td>
-                        <span class="valor-total-extra"></span>
+                    <td class="text-center">
+                        <span class="text-center valor-total-extra"></span>
                     </td>
                 </tr>
                 {% endfor %}
@@ -217,6 +256,27 @@
         </div>
         <button type="submit" class="btn btn-success mt-3">Salvar Formulação</button>
     </form>
+    
+    <!-- Modal Exclusão -->
+    <div class="modal fade" id="modalExcluir" tabindex="-1" aria-labelledby="modalExcluirLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('precifica_formulacao_bp.excluir_formula', ficha_tecnicaID=ficha.ficha_tecnicaID) }}">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title" id="modalExcluirLabel">Confirmar Exclusão</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+            Tem certeza que deseja excluir esta formulação? Essa ação não poderá ser desfeita.
+            </div>
+            <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-danger">Excluir</button>
+            </div>
+        </div>
+        </form>
+    </div>
+    </div>
 </div>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 {% endblock %}
@@ -259,50 +319,74 @@ async function atualizarCustos() {
     let rows = document.querySelectorAll("#tabela-ingredientes tbody tr");
     let explicacoes = [];
     let rowIndex = 0;
-    for (const row of rows) {
+        for (const row of rows) {
         const select = row.querySelector('select');
         const percentual = parseFloat(row.querySelector('.percentual').value) || 0;
         percentualTotal += percentual;
-        let peso = pesoSaco * percentual / 100;
-        row.querySelector('.peso-saco').textContent = peso.toFixed(4);
-        let perda_percent = 0;
 
+        const pesoSacoItem = pesoSaco * percentual / 100;
+        row.querySelector('.peso-saco').textContent = pesoSacoItem.toFixed(4);
+
+        const misturador = parseFloat(document.getElementById('misturador').value) || 0;
+        const pesoMisturador = misturador * percentual / 100;
+        row.querySelector('.peso-misturador').textContent = pesoMisturador.toFixed(4);
+
+        let perda_percent = 0;
         if (select && select.value) {
             perda_percent = parseFloat(await getProdutoPerda(select.value)) || 0;
         }
-        let perda_kg = peso * (perda_percent);
+        const perda_kg = pesoSacoItem * perda_percent;
         row.querySelector('.perda-kg').textContent = perda_kg.toFixed(4);
+
         let custo = 0;
         if (select && select.value) {
-            let custo_data = await getProdutoCusto(select.value);
-            let moeda = custo_data.produto_custo_moeda;
+            const custo_data = await getProdutoCusto(select.value);
+            const moeda = custo_data.produto_custo_moeda;
             let custo_real = custo_data.produto_custo;
-            let custo_dolar = custo_data.produto_custo_dolar;
+            const custo_dolar = custo_data.produto_custo_dolar;
             let valor_usado = custo_real;
+
+            if (custo_data.produto_tipoID === 3 && custo_data.produto_peso) {
+                valor_usado = valor_usado / custo_data.produto_peso;
+            }
+
+            const tipoID = custo_data.produto_tipoID;
+            const pesoProduto = custo_data.produto_peso;
+            if (tipoID === 3 && pesoProduto > 0) {
+                custo_real = custo_real / pesoProduto;
+            }
+
             let explicacao = '';
             if (moeda === "U" && custo_dolar > 0) {
-                let ptaxResp = await fetch('/ptax');
-                let ptaxData = await ptaxResp.json();
-                let valor_convertido = custo_dolar * ptaxData.ptax;
+                const ptaxResp = await fetch('/ptax');
+                const ptaxData = await ptaxResp.json();
+                const valor_convertido = custo_dolar * ptaxData.ptax;
                 valor_usado = Math.max(valor_convertido, custo_real);
                 explicacao = `${select.options[select.selectedIndex].text}: Custo convertido (USD) = R$ ${valor_convertido.toFixed(4)}, Custo em real = R$ ${custo_real.toFixed(4)}, PTAX ${ptaxData.ptax.toFixed(4)} (${ptaxData.data}). Valor utilizado: R$ ${valor_usado.toFixed(4)}.`;
             }
+
             let custo_oportunidade = 0;
             if (categoriaProduto) {
                 custo_oportunidade = await getCustoOportunidade(categoriaProduto);
             }
             if (custo_oportunidade && custo_oportunidade !== 0) {
-                valor_usado = valor_usado + (valor_usado * (custo_oportunidade));
+                valor_usado = valor_usado + (valor_usado * custo_oportunidade);
             }
-            custo = (peso + perda_kg) * valor_usado;
+
+            const custoMP = pesoMisturador * valor_usado;
+            row.querySelector('.custo-mp').textContent = custoMP.toFixed(4);
+
+            custo = (pesoSacoItem + perda_kg) * valor_usado;
             row.querySelector('.custo-saco').textContent = custo.toFixed(4);
             if (explicacao) explicacoes.push(explicacao);
         }
+
         totalIng += custo;
         rowIndex++;
     }
     document.getElementById('total-custo-ing').textContent = totalIng.toFixed(2);
     document.getElementById('explicacao-conversao-moeda').innerHTML = explicacoes.join('<br>');
+    
 
     // Validação soma percentual
     document.getElementById('percentual-total').textContent = percentualTotal.toFixed(4);
@@ -313,20 +397,31 @@ async function atualizarCustos() {
     }
 
     // Custos extras
-    let totalExtras = 0;
-    document.querySelectorAll('#tabela-extras tbody tr').forEach(row => {
-        const select = row.querySelector('.extra-sel');
-        const quantidade = parseFloat(row.querySelector('.extra-quantidade').value) || 0;
-        let valorUnit = 0;
-        if (select && select.selectedOptions.length > 0){ 
-            valorUnit = parseFloat(select.selectedOptions[0].getAttribute('data-valor')) || 0;
-        }
-        row.querySelector('.valor-unitario').textContent = valorUnit.toFixed(2);
-        let total = quantidade * valorUnit;
-        row.querySelector('.valor-total-extra').textContent = total.toFixed(2);
-        totalExtras += total;
-    });
-    document.getElementById('total-custo-extras').textContent = totalExtras.toFixed(2);
+let totalExtras = 0;
+let custo_oportunidade_extra = 0;
+if (categoriaProduto) {
+    custo_oportunidade_extra = await getCustoOportunidade(categoriaProduto);
+}
+
+document.querySelectorAll('#tabela-extras tbody tr').forEach(row => {
+    const select = row.querySelector('.extra-sel');
+    const quantidade = parseFloat(row.querySelector('.extra-quantidade').value) || 0;
+    let valorUnit = 0;
+
+    if (select && select.selectedOptions.length > 0) { 
+        valorUnit = parseFloat(select.selectedOptions[0].getAttribute('data-valor')) || 0;
+    }
+
+    // Aplica custo de oportunidade se houver
+    if (custo_oportunidade_extra && custo_oportunidade_extra !== 0) {
+        valorUnit += valorUnit * custo_oportunidade_extra;
+    }
+
+    row.querySelector('.valor-unitario').textContent = valorUnit.toFixed(2);
+    let total = quantidade * valorUnit;
+    row.querySelector('.valor-total-extra').textContent = total.toFixed(2);
+    totalExtras += total;
+});
 
     // Custo produção (se existir)
     let custoProducao = 0;
@@ -335,6 +430,7 @@ async function atualizarCustos() {
     }
     let totalProdutos = totalIng + totalExtras + custoProducao;
     document.getElementById('custo-total-produto').textContent = 'R$ ' + totalProdutos.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('total-custo-extras').textContent = totalExtras.toFixed(2);
 }
 
 // Cálculo SACOS POR BATIDA ---------------------------

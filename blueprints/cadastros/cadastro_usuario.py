@@ -21,6 +21,8 @@ def cadastrar_usuario_interno():
         nome = request.form.get('nome', '')
         ultimo_nome = request.form.get('ultimo_nome', '')
         email = request.form.get('email', '')
+        conselho = request.form.get('conselho', '')
+        numero_conselho = request.form.get('numero_conselho', '')
         senha = request.form.get('senha', '')
         confirmar_senha = request.form.get('confirmar_senha', '')
         cargo_id = request.form.get('cargo_id')
@@ -44,10 +46,10 @@ def cadastrar_usuario_interno():
 
         try:
             cursor.execute("""
-                INSERT INTO usuarios (cpf, nome, ultimo_nome, email, usuario, senha, empresa, cargo, data)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO usuarios (cpf, nome, ultimo_nome, email, usuario, senha, empresa, cargo, data, conselho, numero_conselho)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                cpf, nome, ultimo_nome, email, email, senha_hash, empresa_id, cargo_id, data_cadastro
+                cpf, nome, ultimo_nome, email, email, senha_hash, empresa_id, cargo_id, data_cadastro,conselho, numero_conselho
             ))
             conn.commit()
             flash('Usuário cadastrado com sucesso!')

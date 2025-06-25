@@ -47,3 +47,7 @@ body {
     color: #fff;
     background: #312A25;
 }
+
+input[type="number"].percentual {
+  text-align: center;
+}
