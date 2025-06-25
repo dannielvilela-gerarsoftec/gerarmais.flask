@@ -61,8 +61,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const juros = {
             'avista': 0,
             '28': jurosDiario * 28,
-            '56': jurosDiario * 56,
             '28_56': jurosDiario * 42,
+            '56': jurosDiario * 56,
             '84': jurosDiario * 84,
             '3x': jurosDiario * 70
         };
@@ -84,8 +84,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const juros = {
             'avista': 0,
             '28': jurosDiario * 28,
-            '56': jurosDiario * 56,
             '28_56': jurosDiario * 42,
+            '56': jurosDiario * 56,
             '84': jurosDiario * 84,
             '3x': jurosDiario * 70
         };
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const input = document.getElementById(`preco_venda_${bloco}`);
         if (input) {
             input.addEventListener('input', () => atualizarCamposBloco(bloco));
-            //atualizarCamposBloco(bloco); // também executa ao carregar a página
+            atualizarCamposBloco(bloco); // também executa ao carregar a página
         }
     });
 
@@ -150,8 +150,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         <th>Condição</th>
                         <th>A Vista</th>
                         <th>28 Dias</th>
-                        <th>56 Dias</th>
                         <th>28/56</th>
+                        <th>56 Dias</th>
                         <th>84 Dias</th>
                         <th>3x</th>
                     </tr>
@@ -162,8 +162,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         <td>{{ row.nome }}</td>
                         <td>R$ {{ '%.2f' % row.avista }}</td>
                         <td>R$ {{ '%.2f' % row['28'] }}</td>
-                        <td>R$ {{ '%.2f' % row['56'] }}</td>
                         <td>R$ {{ '%.2f' % row['28_56'] }}</td>
+                        <td>R$ {{ '%.2f' % row['56'] }}</td>
                         <td>R$ {{ '%.2f' % row['84'] }}</td>
                         <td>R$ {{ '%.2f' % row['3x'] }}</td>
                     </tr>
@@ -178,8 +178,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         <th>Condição</th>
                         <th>A Vista</th>
                         <th>28 Dias</th>
-                        <th>56 Dias</th>
                         <th>28/56</th>
+                        <th>56 Dias</th>
                         <th>84 Dias</th>
                         <th>3x</th>
                     </tr>
@@ -190,8 +190,8 @@ document.addEventListener('DOMContentLoaded', function () {
                        <td>{{ row.nome }}</td>
                         <td id="pagamento_rev_de_avista">R$ {{ '%.2f' % row.avista }}</td>
                         <td id="pagamento_rev_de_28">R$ {{ '%.2f' % row['28'] }}</td>
-                        <td id="pagamento_rev_de_56">R$ {{ '%.2f' % row['56'] }}</td>
                         <td id="pagamento_rev_de_28_56">R$ {{ '%.2f' % row['28_56'] }}</td>
+                        <td id="pagamento_rev_de_56">R$ {{ '%.2f' % row['56'] }}</td>
                         <td id="pagamento_rev_de_84">R$ {{ '%.2f' % row['84'] }}</td>
                         <td id="pagamento_rev_de_3x">R$ {{ '%.2f' % row['3x'] }}</td>
                     </tr>

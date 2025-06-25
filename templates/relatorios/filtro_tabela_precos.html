@@ -7,29 +7,62 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <form method="post" class="mb-4 d-print-none">
-    <div class="mb-3">
-        <label><b>Filtrar Categorias</b></label>
-        <div class="mb-2 d-flex flex-wrap gap-2 align-items-center">
-            <input type="text" id="categoria-busca" class="form-control" placeholder="Buscar categoria..." style="max-width: 340px">
-            <button type="button" class="btn btn-outline-primary btn-sm" id="cat-select-all">Selecionar todas</button>
-            <button type="button" class="btn btn-outline-danger btn-sm" id="cat-deselect-all">Desmarcar todas</button>
-        </div>
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-2" id="categorias-container"
-             style="max-height: 360px; overflow-y: auto; border:1px solid #eaeaea; background:#f9f9f9; border-radius:8px; padding:12px;">
-            {% for categoria in categorias %}
-              <div class="col categoria-item">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="categorias"
-                           value="{{ categoria.categoriaID }}"
-                           id="cat{{ categoria.categoriaID }}"
-                           {% if categoria.categoriaID|string in request.form.getlist('categorias') %}checked{% endif %}>
-                    <label class="form-check-label" for="cat{{ categoria.categoriaID }}">{{ categoria.categoria }}</label>
-                </div>
-              </div>
-            {% endfor %}
-        </div>
-        <small class="text-muted">Selecione uma ou mais categorias. Digite para filtrar.</small>
+<!--Tabela 1-->
+    <label><b>Filtrar Tipos</b></label>
+    <div class="mb-2 d-flex flex-wrap gap-2 align-items-center">
+    <input type="text" id="tipo-busca" class="form-control" placeholder="Buscar tipo..." style="max-width: 340px">
+    <button type="button" class="btn btn-outline-primary btn-sm" id="tipo-select-all">Selecionar todas</button>
+    <button type="button" class="btn btn-outline-danger btn-sm" id="tipo-deselect-all">Desmarcar todas</button>
     </div>
+
+    <div id="tipos-container" class="row row-cols-1 row-cols-md-3 g-2 tipo-container" style="max-height: 200px; overflow-y: auto;">
+    {% for tipo in tipos %}
+        <div class="col tipo-item">
+        <div class="form-check">
+            <input class="form-check-input filtro-tipo" type="checkbox" name="tipos" value="{{ tipo.tipoID }}"
+       id="tipo{{ tipo.tipoID }}"
+       {% if tipo.tipoID|string in request.form.getlist('tipos') %}checked{% endif %}>
+            <label class="form-check-label" for="tipo{{ tipo.tipoID }}">{{ tipo.nome }}</label>
+        </div>
+        </div>
+    {% endfor %}
+    </div>
+<!--Tabela 1-->
+
+<!--Tabela 2-->
+    <label><b>Filtrar Categorias</b></label>
+    <div class="mb-2 d-flex flex-wrap gap-2 align-items-center">
+    <input type="text" id="categoria-busca" class="form-control" placeholder="Buscar categoria..." style="max-width: 340px">
+    <button type="button" class="btn btn-outline-primary btn-sm" id="cat-select-all">Selecionar todas</button>
+    <button type="button" class="btn btn-outline-danger btn-sm" id="cat-deselect-all">Desmarcar todas</button>
+    </div>
+
+    <div id="categorias-container" class="row row-cols-1 row-cols-md-3 g-2 categoria-container" style="max-height: 300px; overflow-y: auto;">
+    {% for categoria in categorias %}
+        <div class="col categoria-item" data-tipo="{{ categoria.categoria_tipoID }}">
+        <div class="form-check">
+        <input class="form-check-input filtro-categoria" type="checkbox" name="categorias"
+            value="{{ categoria.categoriaID }}" id="cat{{ categoria.categoriaID }}"
+            {% if categoria.categoriaID|string in request.form.getlist('categorias') %}checked{% endif %}>
+            <label class="form-check-label" for="cat{{ categoria.categoriaID }}">{{ categoria.categoria }}</label>
+        </div>
+        </div>
+    {% endfor %}
+    </div>
+<!--Tabela 2-->
+
+<!--Tabela 3-->
+    <label><b>Filtrar Produtos</b></label>
+    <div class="mb-2 d-flex flex-wrap gap-2 align-items-center">
+    <input type="text" id="produto-busca" class="form-control" placeholder="Buscar produto..." style="max-width: 340px">
+    <button type="button" class="btn btn-outline-primary btn-sm" id="prod-select-all">Selecionar todas</button>
+    <button type="button" class="btn btn-outline-danger btn-sm" id="prod-deselect-all">Desmarcar todas</button>
+    </div>
+
+    <div id="produtos-container" class="row row-cols-1 row-cols-md-3 g-2 produto-container" style="max-height: 300px; overflow-y: auto;">
+    <!-- Preenchido dinamicamente via JS -->
+    </div>
+<!--Tabela 3-->
 
     <div class="mb-3">
         <label><b>Frete:</b></label><br>
@@ -72,24 +105,150 @@
 </form>
 
 <script>
-document.getElementById('categoria-busca').addEventListener('keyup', function () {
-    const filtro = this.value.toLowerCase();
-    document.querySelectorAll('.categoria-item').forEach(function (el) {
-        const texto = el.textContent.toLowerCase();
-        el.style.display = texto.includes(filtro) ? '' : 'none';
+const produtosMarcados = {{ request.form.getlist('produtos') | tojson }};
+
+// Dados passados do back-end
+const relacaoTipoCategoria = {{ relacao_tipo_categoria|tojson }};
+const produtosPorCategoria = {{ produtos_por_categoria|tojson }};
+
+// Atualizar categorias com base nos tipos selecionados
+function atualizarCategorias() {
+  const tiposSelecionados = Array.from(document.querySelectorAll('.filtro-tipo:checked')).map(cb => cb.value);
+  const categoriasFiltradas = [];
+
+  for (const [categoriaID, tipoID] of Object.entries(relacaoTipoCategoria)) {
+    if (tiposSelecionados.includes(tipoID.toString())) {
+      categoriasFiltradas.push(categoriaID);
+    }
+  }
+
+  document.querySelectorAll('#categorias-container .categoria-item').forEach(item => {
+    const checkbox = item.querySelector('input');
+    const cid = checkbox.value;
+    if (categoriasFiltradas.includes(cid)) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+      checkbox.checked = false;
+    }
+  });
+
+  atualizarProdutos(); // atualiza também os produtos visíveis
+}
+
+// Atualizar produtos com base nas categorias selecionadas
+function atualizarProdutos() {
+  const categoriasSelecionadas = Array.from(document.querySelectorAll('.filtro-categoria:checked')).map(cb => cb.value);
+  const container = document.getElementById('produtos-container');
+  container.innerHTML = '';
+
+  categoriasSelecionadas.forEach(catID => {
+    const produtos = produtosPorCategoria[catID] || [];
+    produtos.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'col produto-item';
+        const checked = produtosMarcados.includes(String(p.id)) ? 'checked' : '';
+        item.innerHTML = `
+        <div class="form-check">
+            <input class="form-check-input filtro-produto" type="checkbox" name="produtos" value="${p.id}" id="prod${p.id}" ${checked}>
+            <label class="form-check-label" for="prod${p.id}">${p.nome}</label>
+        </div>
+        `;
+      container.appendChild(item);
     });
+  });
+
+  aplicarFiltroBuscaProduto(); // reaplica filtro de busca se já digitado
+}
+
+// Filtros de busca dinâmicos
+function aplicarFiltroBuscaTipo() {
+  const termo = document.getElementById('tipo-busca').value.toLowerCase();
+  document.querySelectorAll('.tipo-item').forEach(item => {
+    item.style.display = item.textContent.toLowerCase().includes(termo) ? '' : 'none';
+  });
+}
+function aplicarFiltroBuscaCategoria() {
+  const termo = document.getElementById('categoria-busca').value.toLowerCase();
+  document.querySelectorAll('.categoria-item').forEach(item => {
+    item.style.display = item.textContent.toLowerCase().includes(termo) ? '' : 'none';
+  });
+}
+function aplicarFiltroBuscaProduto() {
+  const termo = document.getElementById('produto-busca').value.toLowerCase();
+  document.querySelectorAll('.produto-item').forEach(item => {
+    item.style.display = item.textContent.toLowerCase().includes(termo) ? '' : 'none';
+  });
+}
+
+// Botões Selecionar/Desmarcar Todos
+document.getElementById('tipo-select-all').onclick = () => {
+  document.querySelectorAll('.filtro-tipo').forEach(cb => cb.checked = true);
+  atualizarCategorias();
+};
+document.getElementById('tipo-deselect-all').onclick = () => {
+  document.querySelectorAll('.filtro-tipo').forEach(cb => cb.checked = false);
+  atualizarCategorias();
+};
+
+document.getElementById('cat-select-all').onclick = () => {
+  document.querySelectorAll('#categorias-container .categoria-item')
+    .forEach(item => {
+      if (item.style.display !== 'none') {
+        const cb = item.querySelector('input[type="checkbox"]');
+        cb.checked = true;
+      }
+    });
+  atualizarProdutos();
+};
+
+document.getElementById('cat-deselect-all').onclick = () => {
+  document.querySelectorAll('.filtro-categoria').forEach(cb => cb.checked = false);
+  atualizarProdutos();
+};
+
+document.getElementById('prod-select-all').onclick = () => {
+  document.querySelectorAll('#produtos-container .filtro-produto').forEach(cb => cb.checked = true);
+};
+document.getElementById('prod-deselect-all').onclick = () => {
+  document.querySelectorAll('#produtos-container .filtro-produto').forEach(cb => cb.checked = false);
+};
+
+// Listeners de busca
+document.getElementById('tipo-busca').addEventListener('input', aplicarFiltroBuscaTipo);
+document.getElementById('categoria-busca').addEventListener('input', aplicarFiltroBuscaCategoria);
+document.getElementById('produto-busca').addEventListener('input', aplicarFiltroBuscaProduto);
+
+// Listeners de interação
+document.querySelectorAll('.filtro-tipo').forEach(cb => cb.addEventListener('change', atualizarCategorias));
+document.querySelectorAll('.filtro-categoria').forEach(cb => cb.addEventListener('change', atualizarProdutos));
+
+// Inicializar
+window.addEventListener('DOMContentLoaded', () => {
+  atualizarCategorias();
+  atualizarProdutos();
 });
-document.getElementById('cat-select-all').onclick = function() {
-  document.querySelectorAll('#categorias-container input[type="checkbox"]').forEach(cb => cb.checked = true);
-};
-document.getElementById('cat-deselect-all').onclick = function() {
-  document.querySelectorAll('#categorias-container input[type="checkbox"]').forEach(cb => cb.checked = false);
-};
+
+function abrirImpressao() {
+  const form = document.querySelector('form');
+  const formData = new FormData(form);
+
+    fetch("{{ url_for('tabela_precos_bp.imprimir_tabela_precos') }}", {
+    method: 'POST',
+    body: formData
+  }).then(response => response.text())
+    .then(html => {
+      const novaJanela = window.open('', '_blank');
+      novaJanela.document.write(html);
+      novaJanela.document.close();
+    });
+}
+
 </script>
 
 {% if resultados %}
     <div style="margin-top:2em;">
-        <button onclick="window.print();" class="btn btn-success d-print-none mb-3">Imprimir Tabela</button>
+        <button type="button" class="btn btn-success d-print-none mb-3" onclick="abrirImpressao()">Imprimir Tabela</button>
         <h2 class="d-print-block text-center">Tabela de Preços</h2>
         <div class="text-end mb-2 d-print-block"><small>Gerado em: {{ datahora_geracao }}</small></div>
         {% for categoria, produtos in resultados.items() %}
