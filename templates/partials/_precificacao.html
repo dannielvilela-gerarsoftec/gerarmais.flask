@@ -157,17 +157,42 @@ document.addEventListener('DOMContentLoaded', function () {
                     </tr>
                 </thead>
                 <tbody>
-                    {% for row in tabela_pagamentos %}
                     <tr>
-                        <td>{{ row.nome }}</td>
-                        <td>R$ {{ '%.2f' % row.avista }}</td>
-                        <td>R$ {{ '%.2f' % row['28'] }}</td>
-                        <td>R$ {{ '%.2f' % row['28_56'] }}</td>
-                        <td>R$ {{ '%.2f' % row['56'] }}</td>
-                        <td>R$ {{ '%.2f' % row['84'] }}</td>
-                        <td>R$ {{ '%.2f' % row['3x'] }}</td>
+                        <td>Dentro - Sem Frete</td>
+                        <td id="pagamento_de_avista">R$ {{ '%.2f' % tabela_pagamentos[0].avista }}</td>
+                        <td id="pagamento_de_28">R$ {{ '%.2f' % tabela_pagamentos[0]['28'] }}</td>
+                        <td id="pagamento_de_28_56">R$ {{ '%.2f' % tabela_pagamentos[0]['28_56'] }}</td>
+                        <td id="pagamento_de_56">R$ {{ '%.2f' % tabela_pagamentos[0]['56'] }}</td>
+                        <td id="pagamento_de_84">R$ {{ '%.2f' % tabela_pagamentos[0]['84'] }}</td>
+                        <td id="pagamento_de_3x">R$ {{ '%.2f' % tabela_pagamentos[0]['3x'] }}</td>
                     </tr>
-                    {% endfor %}
+                    <tr>
+                        <td>Dentro - Com Frete</td>
+                        <td id="pagamento_de_fr_avista">R$ {{ '%.2f' % tabela_pagamentos[1].avista }}</td>
+                        <td id="pagamento_de_fr_28">R$ {{ '%.2f' % tabela_pagamentos[1]['28'] }}</td>
+                        <td id="pagamento_de_fr_28_56">R$ {{ '%.2f' % tabela_pagamentos[1]['28_56'] }}</td>
+                        <td id="pagamento_de_fr_56">R$ {{ '%.2f' % tabela_pagamentos[1]['56'] }}</td>
+                        <td id="pagamento_de_fr_84">R$ {{ '%.2f' % tabela_pagamentos[1]['84'] }}</td>
+                        <td id="pagamento_de_fr_3x">R$ {{ '%.2f' % tabela_pagamentos[1]['3x'] }}</td>
+                    </tr>
+                    <tr>
+                        <td>Fora - Sem Frete</td>
+                        <td id="pagamento_fe_avista">R$ {{ '%.2f' % tabela_pagamentos[2].avista }}</td>
+                        <td id="pagamento_fe_28">R$ {{ '%.2f' % tabela_pagamentos[2]['28'] }}</td>
+                        <td id="pagamento_fe_28_56">R$ {{ '%.2f' % tabela_pagamentos[2]['28_56'] }}</td>
+                        <td id="pagamento_fe_56">R$ {{ '%.2f' % tabela_pagamentos[2]['56'] }}</td>
+                        <td id="pagamento_fe_84">R$ {{ '%.2f' % tabela_pagamentos[2]['84'] }}</td>
+                        <td id="pagamento_fe_3x">R$ {{ '%.2f' % tabela_pagamentos[2]['3x'] }}</td>
+                    </tr>
+                    <tr>
+                        <td>Fora - Com Frete</td>
+                        <td id="pagamento_fe_fr_avista">R$ {{ '%.2f' % tabela_pagamentos[3].avista }}</td>
+                        <td id="pagamento_fe_fr_28">R$ {{ '%.2f' % tabela_pagamentos[3]['28'] }}</td>
+                        <td id="pagamento_fe_fr_28_56">R$ {{ '%.2f' % tabela_pagamentos[3]['28_56'] }}</td>
+                        <td id="pagamento_fe_fr_56">R$ {{ '%.2f' % tabela_pagamentos[3]['56'] }}</td>
+                        <td id="pagamento_fe_fr_84">R$ {{ '%.2f' % tabela_pagamentos[3]['84'] }}</td>
+                        <td id="pagamento_fe_fr_3x">R$ {{ '%.2f' % tabela_pagamentos[3]['3x'] }}</td>
+                    </tr>
                 </tbody>
             </table>
         </div>

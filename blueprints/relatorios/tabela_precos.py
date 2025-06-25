@@ -85,11 +85,20 @@ def gerar_tabela_preco(
             ORDER BY p.produto_nome ASC
         """, (cat_id,))
         produtos = cursor.fetchall()
+
+        # Buscar frete da categoria
+        cursor.execute("SELECT frete FROM parametros WHERE categoriaID = %s", (cat_id,))
+        frete_categoria = cursor.fetchone()
+        frete_r_ton_categoria = float(frete_categoria['frete']) if frete_categoria else 0
+
         if not produtos:
             continue
 
         nome_cat = produtos[0]['categoria']
-        resultados[nome_cat] = []
+        resultados[nome_cat] = {
+            "frete_r_ton": frete_r_ton_categoria,
+            "produtos": []
+        }
 
         for produto in produtos:
             if produtos_filtrados and str(produto['produtoID']) not in produtos_filtrados:
@@ -239,7 +248,7 @@ def gerar_tabela_preco(
             lucro_liquido = preco_venda - custo_total - total_impostos
             lucro_liquido_percent = (lucro_liquido / preco_venda * 100) if preco_venda else Decimal(0)
 
-            resultados[nome_cat].append({
+            resultados[nome_cat]["produtos"].append({
                 'nome': produto['produto_nome'],
                 'pagamentos': pagamentos_list,
                 'msg_dolar': msg_dolar,
@@ -317,7 +326,7 @@ def tabela_precos():
         produtos_selecionados=produtos_selecionados
     )
 
-@tabela_precos_bp.route('/tabela_precos/imprimir', methods=['POST'])
+@tabela_precos_bp.route('/imprimir', methods=['POST'])
 def imprimir_tabela_precos():
     # Pegue os mesmos dados do form
     tipos = request.form.getlist("tipos")
@@ -337,5 +346,9 @@ def imprimir_tabela_precos():
     return render_template(
         "relatorios/tabela_precos_impressao.html",
         resultados=resultados,
-        datahora_geracao=datahora_geracao
+        datahora_geracao=datahora_geracao,
+        frete_opcao=frete_opcao,
+        frete_manual=frete_manual,
+        dentro_fora=dentro_fora
     )
+

@@ -9,6 +9,7 @@
     th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
     th { background: #f0f0f0; }
     h3 { margin-top: 30px; background: #e6f0ff; padding: 10px; }
+    .info { font-size: 0.95em; margin-bottom: 15px; }
   </style>
 </head>
 <body>
@@ -17,8 +18,30 @@
     <em>Gerado em: {{ datahora_geracao }}</em>
   </div>
 
-  {% for categoria, produtos in resultados.items() %}
+  <div class="info">
+    <strong>Frete:</strong>
+    {% if frete_opcao == 'sem' %}
+      Sem frete considerado.
+    {% elif frete_opcao == 'manual' %}
+      Frete manual: R$ {{ frete_manual }}/tonelada.
+    {% elif frete_opcao == 'bd' %}
+      Frete conforme parâmetros da categoria.
+    {% endif %}
+    <br>
+    <strong>Faturamento:</strong> 
+    {% if dentro_fora == 'dentro' %}
+      Dentro do Estado
+    {% else %}
+      Fora do Estado
+    {% endif %}
+  </div>
+
+  {% for categoria, dados in resultados.items() %}
     <h3>{{ categoria }}</h3>
+
+    {% if frete_opcao == 'bd' %}
+      <p><strong>Frete considerado:</strong> R$ {{ dados.frete_r_ton | round(2) }}/tonelada</p>
+    {% endif %}
     <table>
       <thead>
         <tr>
@@ -32,7 +55,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for p in produtos %}
+        {% for p in dados.produtos %}
           <tr>
             <td>{{ p.nome }}</td>
             <td>R$ {{ p.pagamentos[0]|round(2) }}</td>

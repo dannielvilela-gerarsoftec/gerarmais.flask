@@ -31,7 +31,8 @@
   </div>
   <div class="col-md-6 mb-3">
     <label for="produto_categoriaID">Categoria do Produto</label>
-    <select class="form-select" id="produto_categoriaID" name="produto_categoriaID" required>
+    <select class="form-select" id="produto_categoriaID" name="produto_categoriaID"
+            data-valor-atual="{{ produto.produto_categoriaID if produto else '' }}" required>
         <option disabled selected>Selecione o tipo primeiro</option>
     </select>
   </div>
@@ -79,51 +80,3 @@
            style="text-transform: uppercase"
            value="{{ produto.produto_fornecedor if produto else '' }}">
 </div>
-
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const tipoSelect = document.getElementById('produto_tipoID');
-    const categoriaSelect = document.getElementById('produto_categoriaID');
-
-    async function carregarCategorias(tipoIDSelecionado, categoriaPreSelecionada = null) {
-        categoriaSelect.innerHTML = '<option disabled selected>Carregando categorias...</option>';
-
-        try {
-            const response = await fetch(`/editar_produto/categorias_por_tipo/${tipoIDSelecionado}`);
-
-            const categorias = await response.json();
-
-            categoriaSelect.innerHTML = '<option disabled selected>Selecione a categoria</option>';
-
-            categorias.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat.id;
-                option.textContent = cat.nome;
-                if (categoriaPreSelecionada && parseInt(categoriaPreSelecionada) === cat.id) {
-                    option.selected = true;
-                }
-                categoriaSelect.appendChild(option);
-            });
-
-        } catch (err) {
-            categoriaSelect.innerHTML = '<option disabled selected>Erro ao carregar categorias</option>';
-            console.error('Erro ao buscar categorias:', err);
-        }
-    }
-
-    tipoSelect.addEventListener('change', function () {
-        const tipoID = tipoSelect.value;
-        if (tipoID) {
-            carregarCategorias(tipoID);
-        }
-    });
-
-    // Executa ao carregar a página (caso esteja editando)
-    const tipoInicial = tipoSelect.value;
-    const categoriaAtual = "{{ produto.produto_categoriaID if produto else '' }}";
-    if (tipoInicial) {
-        carregarCategorias(tipoInicial, categoriaAtual);
-    }
-});
-</script>
