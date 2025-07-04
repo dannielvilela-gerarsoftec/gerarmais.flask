@@ -209,7 +209,12 @@
                             <div>
                                 <strong>Total ingredientes:</strong> R$ {{ p.ficha_tecnica.total_ingredientes | round(4) }}<br>
                                 <strong>Total extras:</strong> R$ {{ p.ficha_tecnica.total_extras | round(4) }}<br>
-                                <strong>Total ficha técnica:</strong> R$ {{ p.ficha_tecnica.custo_total | round(4) }}
+                                {% if p.custo_producao_r and p.custo_producao_r > 0 %}
+                                    <strong>Custo produção:</strong> R$ {{ p.custo_producao_r | round(4) }}<br>
+                                    <strong>Total ficha técnica:</strong> R$ {{ (p.ficha_tecnica.custo_total + p.custo_producao_r) | round(4) }}
+                                {% else %}
+                                    <strong>Total ficha técnica:</strong> R$ {{ p.ficha_tecnica.custo_total | round(4) }}
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -228,7 +233,6 @@
                             <th>Custo total (R$)</th>
                             <th>Total impostos (R$)</th>
                             <th>Custo frete (R$)</th>
-                            <th>Custo produção (R$)</th>
                             <th>Outros Custos (R$)</th>
                             <th>Custo do Produto (R$)</th>
                         </tr>
@@ -243,7 +247,6 @@
                             <td>R$ {{ p.custo_total_r | round(2) }}</td>
                             <td>R$ {{ p.total_impostos_r | round(2) }}</td>
                             <td>R$ {{ p.custo_frete_r | round(2) }}</td>
-                            <td>R$ {{ p.custo_producao_r | round(2) }}</td>
                             <td>R$ {{ p.outros_custos_r | round(2) }}</td>
                             <td>R$ {{ p.custo_produto_r | round(2) }}</td>
                         </tr>

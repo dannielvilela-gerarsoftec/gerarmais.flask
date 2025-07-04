@@ -20,7 +20,7 @@ def obter_parametros(categoriaID):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""
-        SELECT pis, cofins, irpj, csll, icms, icms_fe, frete, producao,
+        SELECT pis, cofins, irpj, csll, icms, icms_fe, frete,
                outros_custos, lucro_desejado, lucro_revenda, juros_diario
         FROM parametros
         WHERE categoriaID = %s
@@ -30,10 +30,9 @@ def obter_parametros(categoriaID):
     conn.close()
     return parametros
 
-def calcular_precificacao(custo, frete, producao, lucro, outros, pis, cofins, irpj, csll, icms):
+def calcular_precificacao(custo, frete, lucro, outros, pis, cofins, irpj, csll, icms):
     custo = Decimal(custo or 0)
     frete = Decimal(frete or 0)
-    producao = Decimal(producao or 0)
     outros = Decimal(outros or 0)
     lucro = Decimal(lucro or 0)
     pis = Decimal(pis or 0)
@@ -44,10 +43,10 @@ def calcular_precificacao(custo, frete, producao, lucro, outros, pis, cofins, ir
 
     soma_percentuais = lucro + outros + pis + cofins + irpj + csll + icms
     base = 1 - soma_percentuais
-    preco_venda = (custo + frete + producao) / base if base != 0 else Decimal(0)
+    preco_venda = (custo + frete) / base if base != 0 else Decimal(0)
     outros_r = preco_venda * outros
-    custo_total = custo + frete + producao + outros_r
     impostos = preco_venda * (pis + cofins + irpj + csll + icms)
+    custo_total = custo + frete + outros_r + impostos
     lucro_liquido = preco_venda - custo_total - impostos
     lucro_pct = (lucro_liquido / preco_venda) * 100 if preco_venda else Decimal(0)
     return preco_venda, lucro_liquido, impostos, lucro_pct, custo_total, outros_r
@@ -87,7 +86,6 @@ def editar_produto(produtoID):
     custo_oportunidade = float(juros_row.get('custo_oportunidade', 0))
 
     frete_ton = Decimal(parametros.get('frete', 0))
-    producao_ton = Decimal(parametros.get('producao', 0))
     outros_pct = Decimal(parametros.get('outros_custos', 0))
     lucro_pct = Decimal(parametros.get('lucro_desejado', 0))
     pis = Decimal(parametros.get('pis') or 0)
@@ -108,11 +106,10 @@ def editar_produto(produtoID):
     
     custo_com_oportunidade = float(custo)
     frete = (frete_ton / 1000) * peso
-    producao = (producao_ton / 1000) * peso
 
     def prec(usa_frete, usa_icms):
         return calcular_precificacao(
-            custo, frete if usa_frete else 0, producao, lucro_pct, outros_pct,
+            custo, frete if usa_frete else 0, lucro_pct, outros_pct,
             pis, cofins, irpj, csll, icms if usa_icms else icms_fe
         )
 
@@ -123,11 +120,12 @@ def editar_produto(produtoID):
         'fe_fr': prec(True, False),
     }
 
-    lucro_revenda_pct = Decimal(parametros.get('lucro_revenda', 0))
+    lucro_revenda_pct = Decimal(str(parametros.get('lucro_revenda') or '0'))
+
 
     def prec_rev(usa_frete, usa_icms):
         return calcular_precificacao(
-            custo, frete if usa_frete else 0, producao, lucro_revenda_pct, outros_pct,
+            custo, frete if usa_frete else 0, lucro_revenda_pct, outros_pct,
             pis, cofins, irpj, csll, icms if usa_icms else icms_fe
         )
 
@@ -137,6 +135,7 @@ def editar_produto(produtoID):
         'fe': prec_rev(False, False),
         'fe_fr': prec_rev(True, False),
     }
+
     produto_revenda_de = precs_rev['de'][0]
     produto_revenda_de_fr = precs_rev['de_fr'][0]
     produto_revenda_fe = precs_rev['fe'][0]
@@ -160,6 +159,13 @@ def editar_produto(produtoID):
         {'nome': 'Fora - Sem Frete', **calc_pagamentos(precs_rev['fe'][0])},
         {'nome': 'Fora - Com Frete', **calc_pagamentos(precs_rev['fe_fr'][0])},
     ]
+
+    valores_base_revenda = {
+        'rev_de': float(precs_rev['de'][0]),
+        'rev_de_fr': float(precs_rev['de_fr'][0]),
+        'rev_fe': float(precs_rev['fe'][0]),
+        'rev_fe_fr': float(precs_rev['fe_fr'][0]),
+    }
 
     if request.method == 'POST':
         form = request.form
@@ -212,29 +218,50 @@ def editar_produto(produtoID):
         WHERE produtoID = %s
         """
 
-        cursor.execute(update_query, (
-            produto_nome, produto_tipoID, produto_categoriaID, produto_descricao,
-            produto_peso, produto_validade, produto_unidadeID, produto_custo,
-            produto_custo_moeda, produto_custo_dolar, produto_fornecedor,
-            preco_venda_de, preco_venda_de_fr, preco_venda_fe, preco_venda_fe_fr,
-            produto_revenda_de, produto_revenda_de_fr, produto_revenda_fe, produto_revenda_fe_fr,
-            produto_ativo, produtoID
-        ))
-
         try:
-            cursor.execute(update_query, (...))
+            cursor.execute(update_query, (
+                produto_nome, produto_tipoID, produto_categoriaID, produto_descricao,
+                produto_peso, produto_validade, produto_unidadeID, produto_custo,
+                produto_custo_moeda, produto_custo_dolar, produto_fornecedor,
+                preco_venda_de, preco_venda_de_fr, preco_venda_fe, preco_venda_fe_fr,
+                produto_revenda_de, produto_revenda_de_fr, produto_revenda_fe, produto_revenda_fe_fr,
+                produto_ativo, produtoID
+            ))
             conn.commit()
         except mysql.connector.errors.DatabaseError as db_err:
             conn.rollback()
             if getattr(db_err, 'errno', None) == 1205:
                 flash("Banco ocupado no momento. Tente novamente.", "warning")
             else:
-                flash(f"Erro ao salvar: {db_err}", "danger")
+                flash(f"Erro ao salvar produto: {db_err}", "danger")
             cursor.close()
             conn.close()
             return redirect(request.url)
         else:
             flash("Produto atualizado com sucesso!", "success")
+
+            # Recalcular valores de revenda após salvar
+            precs_rev = {
+                'de': prec_rev(False, True),
+                'de_fr': prec_rev(True, True),
+                'fe': prec_rev(False, False),
+                'fe_fr': prec_rev(True, False),
+            }
+
+            tabela_pagamentos_revenda = [
+                {'nome': 'Dentro - Sem Frete', **calc_pagamentos(precs_rev['de'][0])},
+                {'nome': 'Dentro - Com Frete', **calc_pagamentos(precs_rev['de_fr'][0])},
+                {'nome': 'Fora - Sem Frete', **calc_pagamentos(precs_rev['fe'][0])},
+                {'nome': 'Fora - Com Frete', **calc_pagamentos(precs_rev['fe_fr'][0])},
+            ]
+
+            valores_base_revenda = {
+                'rev_de': float(precs_rev['de'][0]),
+                'rev_de_fr': float(precs_rev['de_fr'][0]),
+                'rev_fe': float(precs_rev['fe'][0]),
+                'rev_fe_fr': float(precs_rev['fe_fr'][0]),
+            }
+
 
 
     tabela_pagamentos = [
@@ -260,7 +287,6 @@ def editar_produto(produtoID):
         unidades=unidades,
         parametros=parametros,
         custo_frete=frete,
-        custo_producao=producao,
         preco_venda_de=float(produto.get('produto_venda_de') or precs['de'][0]),
         preco_venda_de_fr=float(produto.get('produto_venda_de_fr') or precs['de_fr'][0]),
         preco_venda_fe=float(produto.get('produto_venda_fe') or precs['fe'][0]),
@@ -279,6 +305,7 @@ def editar_produto(produtoID):
         tabela_pagamentos_revenda=tabela_pagamentos_revenda,
         custo_produto_de=custo_base if produto_tipoID in (3, 4) else custo,
         custo_com_oportunidade=custo_com_oportunidade,
+        valores_base_revenda=valores_base_revenda,
         clonar=False
     )
 

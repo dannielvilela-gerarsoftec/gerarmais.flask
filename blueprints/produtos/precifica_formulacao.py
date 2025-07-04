@@ -49,7 +49,7 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
     )
     produtos = cursor.fetchall()
     cursor.execute(
-        "SELECT produtoID, produto_nome, produto_categoriaID FROM produtos WHERE produto_tipoID IN (2,3) ORDER BY produto_nome"
+        "SELECT produtoID, produto_nome, produto_categoriaID FROM produtos WHERE produto_tipoID IN (2,3,8) ORDER BY produto_nome"
     )
     ingredientes = cursor.fetchall()
     cursor.execute(
@@ -110,7 +110,7 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
             soma_percentuais += float(percentual)
             idx += 1
         if abs(soma_percentuais - 100.0) > 0.01:
-            flash(f'A soma dos percentuais dos ingredientes deve ser 100%. Soma atual: {soma_percentuais:.4f}%', 'warning')
+            flash(f'A soma dos percentuais dos ingredientes deve ser 100%. Soma atual: {soma_percentuais:.4f}%', 'formulacao')
             conn.close()
             return redirect(request.url)
 
@@ -242,13 +242,13 @@ def _formulacao_view(edit_mode, ficha_tecnicaID=None):
                     custo_unitario = custo_total / peso_sacaria
                     cursor.execute("UPDATE produtos SET produto_custo=%s WHERE produtoID=%s", (custo_unitario, produtoID))
                 else:
-                    flash("Erro: Peso do produto não pode ser zero para conversão em kg.", "danger")
+                    flash("Erro: Peso do produto não pode ser zero para conversão em kg.", 'formulacao')
             elif produto_unidadeID == "3":  # saco/sc
                 cursor.execute("UPDATE produtos SET produto_custo=%s WHERE produtoID=%s", (custo_total, produtoID))
             else:
-                flash("Altere a unidade do produto para Kg ou Saco antes de salvar! (produto_unidadeID inválido)", "warning")
+                flash("Altere a unidade do produto para Kg ou Saco antes de salvar! (produto_unidadeID inválido)", 'formulacao')
         else:
-            flash("O produto está inativo, portanto o custo NÃO foi atualizado!", "warning")
+            flash("O produto está inativo, portanto o custo NÃO foi atualizado!", 'formulacao')
 
         conn.commit()
         cursor.close()
@@ -447,10 +447,10 @@ def excluir_formula(ficha_tecnicaID):
         produtoID = result['produtoID'] if result else None
 
         if not produtoID:
-            flash("Produto vinculado à formulação não encontrado.", "danger")
+            flash("Produto vinculado à formulação não encontrado.", 'formulacao')
             return redirect(url_for('lista_formulacoes_bp.lista_formulacoes'))
 
-        # Verificar se a ficha está sendo usada em outras formulações como ingrediente ou extra
+        # Verifica se o produtoID está sendo usado em OUTRAS fichas como ingrediente ou extra
         cursor.execute("""
             SELECT fi.ficha_tecnicaID, ft.ficha_tecnica_nome 
             FROM ficha_tecnica_itens fi
@@ -467,23 +467,17 @@ def excluir_formula(ficha_tecnicaID):
         """, (produtoID, ficha_tecnicaID))
         usado_como_extra = cursor.fetchall()
 
-        if usado_como_ingrediente or usado_como_extra:
-            fichas_usando = usado_como_ingrediente + usado_como_extra
-            nomes = ", ".join([f['ficha_tecnica_nome'] for f in fichas_usando])
-            flash(f"Não é possível excluir. Este produto é utilizado em outras formulações: {nomes}", "warning")
-            return redirect(url_for('lista_formulacoes_bp.lista_formulacoes'))
-
         # Excluir apenas a ficha e seus itens vinculados
         cursor.execute("DELETE FROM ficha_tecnica_itens WHERE ficha_tecnicaID = %s", (ficha_tecnicaID,))
         cursor.execute("DELETE FROM ficha_tecnica_extras WHERE ficha_tecnicaID = %s", (ficha_tecnicaID,))
         cursor.execute("DELETE FROM ficha_tecnica WHERE ficha_tecnicaID = %s", (ficha_tecnicaID,))
 
         conn.commit()
-        flash("Formulação excluída com sucesso.", "success")
+        flash("Formulação excluída com sucesso.", 'formulacao')
 
     except Exception as e:
         conn.rollback()
-        flash("Erro ao excluir formulação: " + str(e), "danger")
+        flash("Erro ao excluir formulação: " + str(e), 'formulacao')
 
     finally:
         cursor.close()
@@ -506,7 +500,7 @@ def clonar_formula(ficha_tecnicaID):
         ficha_original = cursor.fetchone()
 
         if not ficha_original:
-            flash("Ficha técnica não encontrada.", "danger")
+            flash("Ficha técnica não encontrada.", 'formulacao')
             return redirect(url_for('lista_formulacoes_bp.lista_formulacoes'))
 
         # Criar nova ficha com nome ajustado
@@ -551,12 +545,12 @@ def clonar_formula(ficha_tecnicaID):
             """, (nova_fichaID, ex['produtoID'], ex['extra_quantidade']))
 
         conn.commit()
-        flash("Formulação clonada com sucesso!", "success")
+        flash("Formulação clonada com sucesso!", 'formulacao')
         return redirect(url_for('precifica_formulacao_bp.editar_formula', ficha_tecnicaID=nova_fichaID))
 
     except Exception as e:
         conn.rollback()
-        flash(f"Erro ao clonar formulação: {e}", "danger")
+        flash(f"Erro ao clonar formulação: {e}", 'formulacao')
         return redirect(url_for('lista_formulacoes_bp.lista_formulacoes'))
     finally:
         cursor.close()

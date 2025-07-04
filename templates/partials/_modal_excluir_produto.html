@@ -1,9 +1,9 @@
 <div class="modal fade" id="modalExcluir" tabindex="-1" aria-labelledby="modalExcluirLabel" aria-hidden="true">
   <div class="modal-dialog">
-    <form method="POST" action="{{ url_for('editar_produto_bp.excluir_produto', produtoID=produto.produtoID) }}">
+    <form method="POST" id="form-excluir-produto">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalExcluirLabel">Confirmar Exclusão</h5>
+                <h5 class="modal-title">Confirmar Exclusão</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">

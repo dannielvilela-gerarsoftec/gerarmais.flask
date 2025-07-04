@@ -35,7 +35,12 @@
           <button type="submit" class="btn btn-success btn-sm" form="form-editar-produto">Salvar</button>
           {% if produto and not clonar %}
             <a href="{{ url_for('editar_produto_bp.clonar_produto_view', produtoID=produto.produtoID) }}" class="btn btn-warning btn-sm">Clonar</a>
-            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalExcluir">Excluir</button>
+            <button type="button" class="btn btn-danger btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalExcluir"
+                    data-produto-id="{{ produto.produtoID }}">
+              Excluir
+            </button>
             <a href="{{ url_for('lista_produtos.lista_produtos') }}" class="btn btn-secondary btn-sm">Voltar</a>
           {% endif %}
         </div>
@@ -56,16 +61,15 @@
     <div class="tab-content" id="myTabContent">
         <div class="tab-pane fade show active" id="produto" role="tabpanel">
             {% include 'partials/_form_produto.html' %}
-            {% if produto and not clonar %}
-                {% include 'partials/_modal_excluir_produto.html' %}
-            {% endif %}
         </div>
         <div class="tab-pane fade" id="precificacao" role="tabpanel">
             {% include 'partials/_precificacao.html' %}
         </div>
     </div> 
   </form>
-
+              {% if produto and not clonar %}
+                {% include 'partials/_modal_excluir_produto.html' %}
+            {% endif %}
 <script src="{{ url_for('static', filename='js/editar_produto.js') }}"></script>
 
 {% endblock %}
